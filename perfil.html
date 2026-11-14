@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Sistema Siembra tu Futuro — Perfil</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/estilos.css">
+</head>
+<body class="cargando">
+
+<div class="app">
+  <nav class="sb" id="menu" aria-label="Menú principal">
+    <div class="sb-marca">Siembra tu Futuro</div>
+    <div class="sb-lema">Comunidad de ayuda mutua</div>
+    <a href="panel.html#inicio">Inicio</a>
+    <a href="panel.html#niveles">Niveles</a>
+    <a href="panel.html#mi-grupo">Mi grupo</a>
+    <a href="panel.html#chat">Chat</a>
+    <a href="panel.html#notificaciones">Notificaciones<span class="badge" id="badge-notif" hidden></span></a>
+    <a href="info-personal.html">Info personal</a>
+    <a href="academia.html">Academia</a>
+    <a href="perfil.html" class="on" aria-current="page">Perfil</a>
+    <a href="soporte.html">Soporte</a>
+    <a href="admin.html" id="link-admin" class="link-admin" hidden>Administración</a>
+    <a href="#" class="salir" data-salir>Cerrar sesión</a>
+  </nav>
+
+  <div class="contenido">
+    <header class="topbar">
+      <button type="button" class="btn-menu" id="btn-menu" aria-label="Abrir menú" aria-controls="menu" aria-expanded="false">
+        <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        <span class="badge badge-menu" id="badge-menu" hidden></span>
+      </button>
+      <h2 class="hd">Perfil</h2>
+      <div class="avatar" id="avatar" aria-hidden="true"></div>
+    </header>
+
+    <main class="mn">
+      <section class="ban">
+        <h3 id="perfil-titulo">Perfil</h3>
+        <div class="ban-sub" id="perfil-sub">Tu árbol de la comunidad</div>
+      </section>
+      <div id="perfil-msg" class="msg error" role="alert" hidden></div>
+
+      <div class="perfil-cols">
+        <div class="pila">
+          <section class="card perfil-card">
+            <h3>Estadísticas</h3>
+            <div class="stats" id="stats" aria-live="polite"><p class="mut">Cargando…</p></div>
+          </section>
+          <section class="card perfil-card">
+            <h3>Mis niveles</h3>
+            <div class="niveles-mini" id="niveles-mini"></div>
+            <div class="leyenda-niveles mut">
+              <span><i class="punto completado"></i>Completado</span>
+              <span><i class="punto actual"></i>Actual</span>
+              <span><i class="punto habilitado"></i>Habilitado</span>
+              <span><i class="punto bloqueado"></i>Bloqueado</span>
+            </div>
+          </section>
+        </div>
+        <section class="panel-oscuro" id="panel-grupo" aria-live="polite">
+          <p>Cargando tu grupo…</p>
+        </section>
+      </div>
+
+      <section class="card perfil-card">
+        <h3>Historial de tareas</h3>
+        <div class="tabs tabs-hist" role="tablist" aria-label="Historial de tareas">
+          <button type="button" class="tab" role="tab" id="hist-tab-regaladas" aria-selected="true" aria-controls="hist-lista">Regaladas</button>
+          <button type="button" class="tab" role="tab" id="hist-tab-recibidas" aria-selected="false" aria-controls="hist-lista">Recibidas</button>
+        </div>
+        <div id="hist-lista" class="hist-lista" role="tabpanel" aria-live="polite"></div>
+        <div class="botones botones-fin"><button type="button" class="bo" id="hist-mas" hidden>Ver más</button></div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.50.0/dist/umd/supabase.js"></script>
+<script src="js/config.js"></script>
+<script src="js/comun.js"></script>
+<script src="js/pagina.js"></script>
+<script src="js/perfil.js"></script>
+</body>
+</html>

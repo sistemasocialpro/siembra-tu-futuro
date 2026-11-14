@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Sistema Siembra tu Futuro — Soporte</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/estilos.css">
+</head>
+<body class="cargando">
+
+<div class="app">
+  <nav class="sb" id="menu" aria-label="Menú principal">
+    <div class="sb-marca">Siembra tu Futuro</div>
+    <div class="sb-lema">Comunidad de ayuda mutua</div>
+    <a href="panel.html#inicio">Inicio</a>
+    <a href="panel.html#niveles">Niveles</a>
+    <a href="panel.html#mi-grupo">Mi grupo</a>
+    <a href="panel.html#chat">Chat</a>
+    <a href="panel.html#notificaciones">Notificaciones<span class="badge" id="badge-notif" hidden></span></a>
+    <a href="info-personal.html">Info personal</a>
+    <a href="academia.html">Academia</a>
+    <a href="perfil.html">Perfil</a>
+    <a href="soporte.html" class="on" aria-current="page">Soporte</a>
+    <a href="admin.html" id="link-admin" class="link-admin" hidden>Administración</a>
+    <a href="#" class="salir" data-salir>Cerrar sesión</a>
+  </nav>
+
+  <div class="contenido">
+    <header class="topbar">
+      <button type="button" class="btn-menu" id="btn-menu" aria-label="Abrir menú" aria-controls="menu" aria-expanded="false">
+        <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        <span class="badge badge-menu" id="badge-menu" hidden></span>
+      </button>
+      <h2 class="hd">Soporte</h2>
+      <div class="avatar" id="avatar" aria-hidden="true"></div>
+    </header>
+
+    <main class="mn">
+      <section class="ban">
+        <h3>Página de soporte</h3>
+        <div class="ban-sub">Consulta esta sección para cualquier ayuda o duda.</div>
+      </section>
+
+      <div class="soporte-grid" id="soporte-grid" aria-live="polite"></div>
+
+      <section class="card perfil-card">
+        <h3>Estado de tu cuenta</h3>
+        <div class="chips" id="estado-cuenta"><span class="mut">Cargando…</span></div>
+      </section>
+
+      <section class="card perfil-card faq">
+        <h3>Preguntas frecuentes</h3>
+        <details>
+          <summary>¿Qué es una tarea?</summary>
+          <p>Es una acción pequeña en redes sociales a favor del recibidor de tu grupo: seguir una cuenta, comentar, dar me gusta o ver un video. Cuando el recibidor la aprueba, cuenta para avanzar de nivel.</p>
+        </details>
+        <details>
+          <summary>¿Cuánto tiempo tengo para hacerla?</summary>
+          <p>Como regalador tienes <b id="faq-horas">el plazo que fija el administrador</b> desde que confirmas tu participación para hacer tu tarea, escribir al recibidor por WhatsApp y marcarla como hecha.</p>
+        </details>
+        <details>
+          <summary>¿Qué pasa si no la hago a tiempo?</summary>
+          <p>Sales de tu posición y el lugar queda libre para otra persona. Puedes volver a tocar <b>Participar</b> en Niveles.</p>
+        </details>
+        <details>
+          <summary>¿Cómo invito a alguien?</summary>
+          <p>Copia tu enlace de invitación en <b>Inicio</b> y compártelo. Cada link admite como máximo 2 personas registradas a la vez. Cuando subes a constructor tienes <b id="faq-dias">el plazo que fija el administrador</b> para que tus 2 invitados obtengan su lugar.</p>
+        </details>
+        <details>
+          <summary>¿Cómo salgo del sistema?</summary>
+          <p>En <a class="link-fuerte" href="info-personal.html">Info personal</a> → <b>Salir y eliminar mi cuenta</b>. Tu posición queda libre y tu patrocinador recibe un aviso.</p>
+        </details>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.50.0/dist/umd/supabase.js"></script>
+<script src="js/config.js"></script>
+<script src="js/comun.js"></script>
+<script src="js/pagina.js"></script>
+<script src="js/soporte.js"></script>
+</body>
+</html>

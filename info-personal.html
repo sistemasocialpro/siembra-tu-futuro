@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Sistema Siembra tu Futuro — Info personal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/estilos.css">
+</head>
+<body class="cargando">
+
+<div class="app">
+  <nav class="sb" id="menu" aria-label="Menú principal">
+    <div class="sb-marca">Siembra tu Futuro</div>
+    <div class="sb-lema">Comunidad de ayuda mutua</div>
+    <a href="panel.html#inicio">Inicio</a>
+    <a href="panel.html#niveles">Niveles</a>
+    <a href="panel.html#mi-grupo">Mi grupo</a>
+    <a href="panel.html#chat">Chat</a>
+    <a href="panel.html#notificaciones">Notificaciones<span class="badge" id="badge-notif" hidden></span></a>
+    <a href="info-personal.html" class="on" aria-current="page">Info personal</a>
+    <a href="academia.html">Academia</a>
+    <a href="perfil.html">Perfil</a>
+    <a href="soporte.html">Soporte</a>
+    <a href="admin.html" id="link-admin" class="link-admin" hidden>Administración</a>
+    <a href="#" class="salir" data-salir>Cerrar sesión</a>
+  </nav>
+
+  <div class="contenido">
+    <header class="topbar">
+      <button type="button" class="btn-menu" id="btn-menu" aria-label="Abrir menú" aria-controls="menu" aria-expanded="false">
+        <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        <span class="badge badge-menu" id="badge-menu" hidden></span>
+      </button>
+      <h2 class="hd">Info personal</h2>
+      <div class="avatar" id="avatar" aria-hidden="true"></div>
+    </header>
+
+    <main class="mn">
+      <div class="info-cols">
+        <section class="card info-yo">
+          <div class="avatar-grande" id="ip-avatar" aria-hidden="true"></div>
+          <b class="info-usuario" id="ip-usuario">…</b>
+          <div class="mut" id="ip-desde"></div>
+          <div class="chips chips-centro" id="ip-chips"></div>
+          <div class="msg ok" id="ip-verificado" hidden>Tu correo está verificado</div>
+        </section>
+
+        <div class="pila">
+          <form class="card form-info" id="form-info" novalidate>
+            <h3>Información del usuario</h3>
+            <div class="fila-2">
+              <div class="campo">
+                <label class="lb" for="ip-nombre">Nombre completo</label>
+                <input class="in" id="ip-nombre" type="text" autocomplete="name" maxlength="80" aria-describedby="err-ip-nombre">
+                <span class="err" id="err-ip-nombre" aria-live="polite"></span>
+              </div>
+              <div class="campo">
+                <label class="lb" for="ip-usuario-in">Usuario</label>
+                <input class="in" id="ip-usuario-in" type="text" readonly aria-describedby="ayuda-ip-usuario">
+                <span class="ayuda" id="ayuda-ip-usuario">Solo lo cambia el administrador.</span>
+              </div>
+            </div>
+            <div class="fila-2">
+              <div class="campo">
+                <label class="lb" for="ip-correo">Correo</label>
+                <input class="in" id="ip-correo" type="email" readonly>
+              </div>
+              <div class="campo">
+                <label class="lb" for="ip-pais">País</label>
+                <select class="in sel" id="ip-pais"></select>
+              </div>
+            </div>
+            <div class="campo">
+              <label class="lb" for="ip-wa">WhatsApp</label>
+              <input class="in" id="ip-wa" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" placeholder="0999999999" aria-describedby="ayuda-ip-wa err-ip-wa">
+              <span class="ayuda" id="ayuda-ip-wa" aria-live="polite">Ecuador: 0999999999. Otros países: + y código de país.</span>
+              <span class="err" id="err-ip-wa" aria-live="polite"></span>
+            </div>
+            <div class="campo">
+              <label class="check" for="ip-acepta"><input type="checkbox" id="ip-acepta"> <span>Permito que el recibidor de mi grupo vea mi WhatsApp</span></label>
+              <span class="ayuda">Tu recibidor siempre puede ser contactado por ti; si no aceptas, tú escribes primero.</span>
+            </div>
+            <div id="info-form-msg" class="msg" role="alert" hidden></div>
+            <div class="botones botones-fin"><button type="submit" class="btn" id="btn-info">Actualizar información</button></div>
+          </form>
+
+          <form class="card form-info" id="form-pass" novalidate>
+            <h3>Cambiar contraseña</h3>
+            <div class="campo">
+              <label class="lb" for="ip-pass-actual">Contraseña actual</label>
+              <input class="in" id="ip-pass-actual" type="password" autocomplete="current-password">
+            </div>
+            <div class="fila-2">
+              <div class="campo">
+                <label class="lb" for="ip-pass-nueva">Nueva contraseña (mín. 8)</label>
+                <input class="in" id="ip-pass-nueva" type="password" autocomplete="new-password" minlength="8">
+              </div>
+              <div class="campo">
+                <label class="lb" for="ip-pass-conf">Confirmar contraseña</label>
+                <input class="in" id="ip-pass-conf" type="password" autocomplete="new-password" minlength="8">
+              </div>
+            </div>
+            <div id="pass-msg" class="msg" role="alert" hidden></div>
+            <div class="botones botones-fin"><button type="submit" class="bt-amarillo" id="btn-pass">Actualizar contraseña</button></div>
+          </form>
+
+          <section class="card salir-card" aria-labelledby="salir-titulo">
+            <h3 id="salir-titulo">Salir de la plataforma</h3>
+            <p>Si ya recibiste tus tareas y no quieres continuar, puedes salir cuando quieras. Al salir:</p>
+            <ul>
+              <li>Tu posición queda libre.</li>
+              <li>Tu patrocinador recibe un aviso, por ejemplo: <i>"Tu socio (usuario), de la izquierda, se retiró. Tienes un lugar disponible."</i></li>
+              <li>Tu patrocinador puede colocar a otra persona en ese lugar.</li>
+            </ul>
+            <p>Si ya recibiste todas tus tareas y no deseas continuar, <b>te pedimos que salgas</b> para no dejar un lugar ocupado que otra persona podría usar.</p>
+            <p class="mut">Esta acción borra tu cuenta, tus datos y tus notificaciones. No se puede deshacer.</p>
+            <div id="salir-msg" class="msg error" role="alert" hidden></div>
+            <div class="botones"><button type="button" class="bt-salir" id="btn-salir-red">Salir y eliminar mi cuenta</button></div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.50.0/dist/umd/supabase.js"></script>
+<script src="js/config.js"></script>
+<script src="js/comun.js"></script>
+<script src="js/pagina.js"></script>
+<script src="js/info-personal.js"></script>
+</body>
+</html>

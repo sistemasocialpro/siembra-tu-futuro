@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Sistema Siembra tu Futuro — Acceso</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+
+<div class="acceso">
+  <section class="acceso-hero">
+    <svg class="logo" width="88" height="88" viewBox="0 0 88 88" role="img" aria-label="Logo Siembra tu Futuro"><rect width="88" height="88" rx="22" fill="#0f3d21"/><path d="M44 66V40" stroke="#facc15" stroke-width="5" stroke-linecap="round"/><path d="M44 42C44 30 34 24 24 25C24 36 31 43 44 42Z" fill="#facc15"/><path d="M44 48C44 38 53 32 63 33C63 43 56 49 44 48Z" fill="#fde68a"/></svg>
+    <h1>Siembra tu Futuro</h1>
+    <p class="hero-lema">Una comunidad que se ayuda: pequeñas tareas en redes sociales que hacen grande a una persona.</p>
+    <p class="hero-sub">Invita a tu equipo, completa tus tareas y sube de nivel, de Nuevo a Viral.</p>
+    <div class="redes">
+      <a id="red-whatsapp" class="red red-wa" href="#" target="_blank" rel="noopener">WhatsApp</a>
+      <a id="red-instagram" class="red" href="#" target="_blank" rel="noopener" hidden>Instagram</a>
+      <a id="red-tiktok" class="red" href="#" target="_blank" rel="noopener" hidden>TikTok</a>
+    </div>
+  </section>
+
+  <section class="acceso-panel">
+    <div class="acceso-card">
+      <div class="tabs" role="tablist" aria-label="Acceso">
+        <button type="button" class="tab" role="tab" id="tab-login" aria-controls="form-login" aria-selected="true" data-tab="login">Iniciar sesión</button>
+        <button type="button" class="tab" role="tab" id="tab-registro" aria-controls="form-registro" aria-selected="false" data-tab="registro">Registrarse</button>
+      </div>
+
+      <!-- Inicio de sesión -->
+      <form id="form-login" role="tabpanel" aria-labelledby="tab-login" novalidate>
+        <h2>¡Bienvenido de nuevo!</h2>
+        <p class="mut">Inicia sesión para continuar a tu panel.</p>
+        <label class="lb">Correo
+          <input class="in" id="login-id" type="email" autocomplete="email" autocapitalize="none" spellcheck="false" required>
+        </label>
+        <label class="lb">Contraseña
+          <input class="in" id="login-pass" type="password" autocomplete="current-password" required>
+        </label>
+        <div class="fila-entre">
+          <label class="check"><input type="checkbox" id="login-recordar" checked> Recordarme</label>
+          <a href="#" id="olvide" class="link" target="_blank" rel="noopener">¿Olvidaste tu contraseña?</a>
+        </div>
+        <div id="login-msg" class="msg" role="alert" hidden></div>
+        <button type="submit" class="btn btn-grande" id="login-btn">Iniciar sesión</button>
+        <p class="mut centro">¿No tienes cuenta? <a href="#" class="link-fuerte" data-ir="registro">Regístrate</a></p>
+      </form>
+
+      <!-- Registro -->
+      <form id="form-registro" role="tabpanel" aria-labelledby="tab-registro" novalidate hidden>
+        <h2>Crea tu cuenta</h2>
+        <div id="reg-invito" class="mut" hidden></div>
+        <p class="ayuda">Los campos con <span class="req">*</span> son obligatorios.</p>
+
+        <div class="fila-2">
+          <div class="campo">
+            <label class="lb" for="reg-nombre">Nombre completo <span class="req" aria-hidden="true">*</span></label>
+            <input class="in" id="reg-nombre" type="text" autocomplete="name" maxlength="80" required aria-describedby="err-reg-nombre">
+            <span class="err" id="err-reg-nombre" aria-live="polite"></span>
+          </div>
+          <div class="campo">
+            <label class="lb" for="reg-usuario">Nombre de usuario <span class="req" aria-hidden="true">*</span></label>
+            <input class="in" id="reg-usuario" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="20" required aria-describedby="ayuda-reg-usuario err-reg-usuario">
+            <span class="ayuda" id="ayuda-reg-usuario">3 a 20: minúsculas, números o _</span>
+            <span class="err" id="err-reg-usuario" aria-live="polite"></span>
+          </div>
+        </div>
+
+        <div class="campo">
+          <label class="lb" for="reg-correo">Correo <span class="req" aria-hidden="true">*</span></label>
+          <input class="in" id="reg-correo" type="email" autocomplete="email" autocapitalize="none" spellcheck="false" required aria-describedby="err-reg-correo">
+          <span class="err" id="err-reg-correo" aria-live="polite"></span>
+        </div>
+
+        <div class="campo">
+          <label class="lb" for="reg-whatsapp">WhatsApp <span class="req" aria-hidden="true">*</span></label>
+          <input class="in" id="reg-whatsapp" type="tel" inputmode="tel" autocomplete="tel" placeholder="0999999999" maxlength="20" required aria-describedby="ayuda-reg-whatsapp err-reg-whatsapp">
+          <span class="ayuda" id="ayuda-reg-whatsapp" aria-live="polite">Ecuador: 0999999999. Otros países: + y código de país.</span>
+          <span class="err" id="err-reg-whatsapp" aria-live="polite"></span>
+        </div>
+
+        <div class="fila-2">
+          <div class="campo">
+            <label class="lb" for="reg-pass">Contraseña (mín. 8) <span class="req" aria-hidden="true">*</span></label>
+            <input class="in" id="reg-pass" type="password" autocomplete="new-password" minlength="8" required aria-describedby="err-reg-pass">
+            <span class="err" id="err-reg-pass" aria-live="polite"></span>
+          </div>
+          <div class="campo">
+            <label class="lb" for="reg-pass2">Confirmar contraseña <span class="req" aria-hidden="true">*</span></label>
+            <input class="in" id="reg-pass2" type="password" autocomplete="new-password" minlength="8" required aria-describedby="err-reg-pass2">
+            <span class="err" id="err-reg-pass2" aria-live="polite"></span>
+          </div>
+        </div>
+
+        <div class="campo">
+          <label class="check"><input type="checkbox" id="reg-acepta-wa" required aria-describedby="err-reg-acepta-wa"> <span>Acepto que mi número de WhatsApp lo vea mi grupo para coordinar las tareas <span class="req" aria-hidden="true">*</span></span></label>
+          <span class="err" id="err-reg-acepta-wa" aria-live="polite"></span>
+        </div>
+        <div class="campo">
+          <label class="check"><input type="checkbox" id="reg-terminos" required aria-describedby="err-reg-terminos"> <span>Acepto las <a href="reglas.html" target="_blank" rel="noopener" class="link-fuerte">reglas y políticas</a> <span class="req" aria-hidden="true">*</span></span></label>
+          <span class="err" id="err-reg-terminos" aria-live="polite"></span>
+        </div>
+
+        <div id="reg-msg" class="msg" role="alert" hidden></div>
+        <button type="submit" class="btn btn-grande" id="reg-btn">Registrarme</button>
+        <p class="mut centro">¿Ya tienes cuenta? <a href="#" class="link-fuerte" data-ir="login">Inicia sesión</a></p>
+      </form>
+
+      <!-- Registro bloqueado (sin link válido o link sin cupo): se muestra en lugar del formulario -->
+      <section id="reg-bloqueado" class="reg-lleno" role="tabpanel" aria-labelledby="tab-registro" hidden>
+        <h2 id="reg-bloq-titulo">Necesitas un link de invitación</h2>
+        <div class="msg error" role="alert" id="reg-bloq-msg"></div>
+        <a href="index.html" class="btn btn-grande">Ir al inicio</a>
+      </section>
+    </div>
+    <p class="pie-acceso"><a href="reglas.html" class="link-fuerte">Reglas y políticas</a></p>
+  </section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.50.0/dist/umd/supabase.js"></script>
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+</body>
+</html>

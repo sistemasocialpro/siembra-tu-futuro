@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Sistema Siembra tu Futuro — Administración</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/estilos.css">
+</head>
+<body class="cargando">
+
+<div class="app">
+  <nav class="sb" id="menu" aria-label="Menú principal">
+    <div class="sb-marca">Siembra tu Futuro</div>
+    <div class="sb-lema">Comunidad de ayuda mutua</div>
+    <a href="panel.html#inicio">Inicio</a>
+    <a href="panel.html#niveles">Niveles</a>
+    <a href="panel.html#mi-grupo">Mi grupo</a>
+    <a href="panel.html#chat">Chat</a>
+    <a href="panel.html#notificaciones">Notificaciones</a>
+    <a href="info-personal.html">Info personal</a>
+    <a href="academia.html">Academia</a>
+    <a href="perfil.html">Perfil</a>
+    <a href="soporte.html">Soporte</a>
+    <a href="admin.html" class="link-admin on" aria-current="page">Administración</a>
+    <a href="#" class="salir" data-salir>Cerrar sesión</a>
+  </nav>
+
+  <div class="contenido">
+    <header class="topbar">
+      <button type="button" class="btn-menu" id="btn-menu" aria-label="Abrir menú" aria-controls="menu" aria-expanded="false">
+        <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+      </button>
+      <h2 class="hd">Administración</h2>
+      <div class="avatar" aria-hidden="true">A</div>
+    </header>
+
+    <main class="mn">
+      <div class="tabs tabs-admin" role="tablist" aria-label="Administración">
+        <button type="button" class="tab" role="tab" id="tab-usuarios" aria-controls="pan-usuarios" aria-selected="true" data-tab="usuarios">Usuarios</button>
+        <button type="button" class="tab" role="tab" id="tab-grupos" aria-controls="pan-grupos" aria-selected="false" data-tab="grupos">Grupos</button>
+        <button type="button" class="tab" role="tab" id="tab-espera" aria-controls="pan-espera" aria-selected="false" data-tab="espera">Lista de espera <span class="badge" id="badge-espera" hidden></span></button>
+        <button type="button" class="tab" role="tab" id="tab-config" aria-controls="pan-config" aria-selected="false" data-tab="config">Configuración</button>
+      </div>
+
+      <div id="admin-msg" class="msg" role="alert" hidden></div>
+
+      <!-- Usuarios -->
+      <section id="pan-usuarios" role="tabpanel" aria-labelledby="tab-usuarios" class="seccion">
+        <div class="card barra-admin">
+          <input class="in buscador" id="buscar-usuarios" type="search" placeholder="Buscar por usuario, nombre, WhatsApp o código…" aria-label="Buscar usuarios">
+          <div class="mut" id="cuenta-usuarios"></div>
+          <div class="botones-pronto">
+            <button type="button" class="bo" disabled title="Se hará con Edge Functions en otra fase">Restablecer contraseña · Próximamente</button>
+            <button type="button" class="bt-salir" disabled title="Se hará con Edge Functions en otra fase">Eliminar cuenta · Próximamente</button>
+          </div>
+        </div>
+        <div class="tabla-wrap">
+          <table class="tabla">
+            <thead>
+              <tr>
+                <th scope="col">Usuario</th>
+                <th scope="col">Nombre completo</th>
+                <th scope="col">WhatsApp</th>
+                <th scope="col">Código</th>
+                <th scope="col">Invitado por</th>
+                <th scope="col">Fecha</th>
+                <th scope="col">Fundador</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-usuarios">
+              <tr><td colspan="7" class="mut">Cargando usuarios…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Grupos -->
+      <section id="pan-grupos" role="tabpanel" aria-labelledby="tab-grupos" class="seccion" hidden>
+        <div class="card barra-admin">
+          <label class="lb lb-linea" for="filtro-nivel">Nivel
+            <select class="in sel" id="filtro-nivel"></select>
+          </label>
+          <button type="button" class="btn" id="btn-crear-grupo">Crear grupo fundador</button>
+        </div>
+        <p class="mut ayuda-orden">Orden para llenar cada grupo: primero <b>Recibidor</b> (centro), luego <b>Constructor 1</b> (izquierda), luego <b>Constructor 2</b> (derecha) y después los regaladores. Las personas que pones aquí no tienen relojes.</p>
+        <div id="lista-grupos" aria-live="polite"><p class="mut">Cargando grupos…</p></div>
+      </section>
+
+      <!-- Lista de espera -->
+      <section id="pan-espera" role="tabpanel" aria-labelledby="tab-espera" class="seccion" hidden>
+        <div class="card barra-admin">
+          <div>
+            <div class="grupo-titulo">Lista de espera</div>
+            <div class="mut">Personas que tocaron Participar y no encontraron lugar libre en el grupo de quien las invitó.</div>
+          </div>
+          <div class="mut" id="cuenta-espera"></div>
+        </div>
+        <div class="tabla-wrap">
+          <table class="tabla">
+            <thead>
+              <tr>
+                <th scope="col">Usuario</th>
+                <th scope="col">Nombre completo</th>
+                <th scope="col">Nivel</th>
+                <th scope="col">Invitado por</th>
+                <th scope="col">En espera desde</th>
+                <th scope="col"><span class="sr-only">Acción</span></th>
+              </tr>
+            </thead>
+            <tbody id="tabla-espera">
+              <tr><td colspan="6" class="mut">Cargando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Configuración -->
+      <section id="pan-config" role="tabpanel" aria-labelledby="tab-config" class="seccion" hidden>
+        <form class="card form-config" id="form-config" novalidate>
+          <h3>Plazos del sistema</h3>
+          <p class="mut">Se aplican de inmediato a todos los relojes. Puedes usar decimales: <b>0.05 horas = 3 minutos</b>, <b>0.0035 días ≈ 5 minutos</b>.</p>
+          <div class="fila-3">
+            <div class="campo">
+              <label class="lb" for="cfg-horas_tarea">Horas para hacer la tarea</label>
+              <input class="in" id="cfg-horas_tarea" type="number" inputmode="decimal" step="any" min="0" required>
+              <span class="ayuda">Desde que la persona reserva su lugar.</span>
+            </div>
+            <div class="campo">
+              <label class="lb" for="cfg-horas_aviso">Aviso a las (horas)</label>
+              <input class="in" id="cfg-horas_aviso" type="number" inputmode="decimal" step="any" min="0" required>
+              <span class="ayuda">Sin tarea hecha. Debe ser menor que el plazo de la tarea.</span>
+            </div>
+            <div class="campo">
+              <label class="lb" for="cfg-dias_invitar">Días para invitar a 2 personas (general)</label>
+              <input class="in" id="cfg-dias_invitar" type="number" inputmode="decimal" step="any" min="0" required>
+              <span class="ayuda">Desde que sube a constructor. Se usa en los niveles sin días propios (tabla de abajo).</span>
+            </div>
+          </div>
+          <div id="cfg-msg" class="msg error" role="alert" hidden></div>
+          <div class="botones botones-fin">
+            <button type="submit" class="btn" id="btn-guardar-config">Guardar cambios</button>
+          </div>
+        </form>
+
+        <form class="card form-config" id="form-dias-nivel" novalidate>
+          <h3>Días para invitar por nivel</h3>
+          <p class="mut">Plazo del constructor para tener a sus 2 invitados con posición en cada nivel (por ejemplo 7 en el primero y 10 a 15 en los siguientes). Si dejas un nivel vacío, usa el valor general.</p>
+          <div class="tabla-wrap">
+            <table class="tabla tabla-dias">
+              <thead>
+                <tr>
+                  <th scope="col">Orden</th>
+                  <th scope="col">Nivel</th>
+                  <th scope="col">Días</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-dias">
+                <tr><td colspan="3" class="mut">Cargando niveles…</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div id="dias-msg" class="msg error" role="alert" hidden></div>
+          <div class="botones botones-fin">
+            <button type="submit" class="btn" id="btn-guardar-dias">Guardar días por nivel</button>
+          </div>
+        </form>
+
+        <form class="card form-config" id="form-enlaces" novalidate>
+          <h3>Enlaces de soporte</h3>
+          <p class="mut">Se muestran en la página Soporte. Un enlace inactivo aparece atenuado como "Próximamente". El WhatsApp activo también aparece en la portada ("WhatsApp" y "¿Olvidaste tu contraseña?").</p>
+          <div class="enlaces-lista">
+            <div class="enlace-fila">
+              <label class="lb" for="enl-telegram">Canal de Telegram <span class="ayuda">Empieza con https://</span>
+                <input class="in" id="enl-telegram" type="url" placeholder="https://t.me/…" data-clave="telegram">
+              </label>
+              <label class="check" for="enl-act-telegram"><input type="checkbox" id="enl-act-telegram"> Activo</label>
+            </div>
+            <div class="enlace-fila">
+              <label class="lb" for="enl-linktree">Enlaces oficiales (Linktree) <span class="ayuda">Empieza con https://</span>
+                <input class="in" id="enl-linktree" type="url" placeholder="https://linktr.ee/…" data-clave="linktree">
+              </label>
+              <label class="check" for="enl-act-linktree"><input type="checkbox" id="enl-act-linktree"> Activo</label>
+            </div>
+            <div class="enlace-fila">
+              <label class="lb" for="enl-whatsapp">WhatsApp de soporte <span class="ayuda">Ecuador: 0999999999. Otros países: + y código de país</span>
+                <input class="in" id="enl-whatsapp" type="tel" inputmode="tel" placeholder="0999999999" data-clave="whatsapp">
+              </label>
+              <label class="check" for="enl-act-whatsapp"><input type="checkbox" id="enl-act-whatsapp"> Activo</label>
+            </div>
+            <div class="enlace-fila">
+              <label class="lb" for="enl-correo">Correo de soporte
+                <input class="in" id="enl-correo" type="email" placeholder="soporte@…" data-clave="correo">
+              </label>
+              <label class="check" for="enl-act-correo"><input type="checkbox" id="enl-act-correo"> Activo</label>
+            </div>
+          </div>
+          <div id="enlaces-msg" class="msg error" role="alert" hidden></div>
+          <div class="botones botones-fin">
+            <button type="submit" class="btn" id="btn-guardar-enlaces">Guardar enlaces</button>
+          </div>
+        </form>
+
+        <section class="card form-config">
+          <h3>Registro</h3>
+          <label class="check" for="chk-exige-link">
+            <input type="checkbox" id="chk-exige-link">
+            <span><b>Exigir link de referido para registrarse</b></span>
+          </label>
+          <p class="mut">Activado: solo se registra quien entra con el link de invitación de alguien de la comunidad. Desactívalo solo mientras creas a los fundadores y vuelve a activarlo.</p>
+        </section>
+
+        <section class="card form-config">
+          <h3>Revisar plazos ahora</h3>
+          <p class="mut">pg_cron revisa los plazos automáticamente cada 5 minutos. Para probar sin esperar, ejecuta la revisión ahora.</p>
+          <div class="botones botones-fin">
+            <button type="button" class="bo" id="btn-revisar">Revisar plazos ahora</button>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.50.0/dist/umd/supabase.js"></script>
+<script src="js/config.js"></script>
+<script src="js/comun.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>

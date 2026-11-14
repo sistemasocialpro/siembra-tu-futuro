@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Sistema Siembra tu Futuro — Panel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/estilos.css">
+</head>
+<body class="cargando">
+
+<div class="app">
+  <nav class="sb" id="menu" aria-label="Menú principal">
+    <div class="sb-marca">Siembra tu Futuro</div>
+    <div class="sb-lema">Comunidad de ayuda mutua</div>
+    <a href="#inicio" data-seccion="inicio">Inicio</a>
+    <a href="#niveles" data-seccion="niveles">Niveles</a>
+    <a href="#mi-grupo" data-seccion="mi-grupo">Mi grupo</a>
+    <a href="#chat" data-seccion="chat">Chat</a>
+    <a href="#notificaciones" data-seccion="notificaciones">Notificaciones<span class="badge" id="badge-notif" hidden></span></a>
+    <a href="info-personal.html">Info personal</a>
+    <a href="academia.html">Academia</a>
+    <a href="perfil.html">Perfil</a>
+    <a href="soporte.html">Soporte</a>
+    <a href="admin.html" id="link-admin" class="link-admin" hidden>Administración</a>
+    <a href="#" class="salir" data-salir>Cerrar sesión</a>
+  </nav>
+
+  <div class="contenido">
+    <header class="topbar">
+      <button type="button" class="btn-menu" id="btn-menu" aria-label="Abrir menú" aria-controls="menu" aria-expanded="false">
+        <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        <span class="badge badge-menu" id="badge-menu" hidden></span>
+      </button>
+      <h2 class="hd" id="titulo">Inicio</h2>
+      <div class="avatar" id="avatar" aria-hidden="true"></div>
+    </header>
+
+    <main class="mn">
+      <div id="aviso-global" class="msg" role="status" hidden></div>
+
+      <!-- Inicio -->
+      <div class="seccion" id="sec-inicio">
+        <section class="ban ban-inicio">
+          <div>
+            <h3 id="bienvenida">¡Bienvenido de nuevo!</h3>
+            <div class="ban-sub" id="miembro-desde"></div>
+          </div>
+          <svg width="56" height="64" viewBox="0 0 56 64" aria-hidden="true"><circle cx="28" cy="26" r="20" fill="#facc15"/><path d="M28 14L32 23L42 24L34 31L36 41L28 36L20 41L22 31L14 24L24 23Z" fill="#15803d"/><path d="M16 42L12 62L28 54L44 62L40 42" fill="#facc15"/></svg>
+        </section>
+
+        <div id="inicio-reloj"></div>
+        <div id="inicio-recibidor" class="pila"></div>
+
+        <div id="panel-msg" class="msg error" role="alert" hidden></div>
+
+        <div class="fila-cards">
+          <section class="card card-invitacion">
+            <h3>Enlace de invitación</h3>
+            <div class="mut">Comparte tu enlace para que nuevas personas se unan a tu equipo contigo como invitador.</div>
+            <div class="enlace" id="enlace">Cargando…</div>
+            <div class="mut">Tu código: <b id="codigo">—</b></div>
+            <div class="referidos" id="referidos" hidden></div>
+            <div id="referidos-aviso" class="msg error" role="status" hidden>Tu link está inhabilitado porque ya tienes 2 referidos</div>
+            <div class="botones">
+              <button type="button" class="btn" id="btn-copiar" disabled>Copiar enlace</button>
+              <a class="bt-amarillo" id="btn-wa" href="#" target="_blank" rel="noopener" hidden>Compartir en WhatsApp</a>
+            </div>
+            <div id="copiado" class="msg ok" role="status" hidden></div>
+          </section>
+
+          <section class="card card-acciones">
+            <h3>Acciones rápidas</h3>
+            <a class="btn" href="#niveles">Unirse / Ver niveles</a>
+            <a class="bo" href="#mi-grupo">Mi grupo</a>
+            <a class="bo" href="#notificaciones">Notificaciones</a>
+            <a class="bo" href="soporte.html">Soporte</a>
+            <button type="button" class="bt-salir" data-salir>Cerrar sesión</button>
+          </section>
+        </div>
+      </div>
+
+      <!-- Niveles -->
+      <div class="seccion" id="sec-niveles" hidden>
+        <section class="ban">
+          <h3>Avanza nivel por nivel</h3>
+          <div class="ban-sub">Solo está habilitado tu nivel actual. Los demás tienen candado hasta que avances.</div>
+        </section>
+        <div class="msg info aviso-niveles">Subir de nivel depende de que tu red siga creciendo y no está garantizado. Lee las <a href="reglas.html" target="_blank" rel="noopener">Reglas y políticas</a>.</div>
+        <div id="niveles-aviso" hidden></div>
+        <div class="grid-niveles" id="niveles-lista" aria-live="polite">
+          <p class="mut">Cargando niveles…</p>
+        </div>
+      </div>
+
+      <!-- Mi grupo -->
+      <div class="seccion" id="sec-mi-grupo" hidden>
+        <div id="grupo-contenido" aria-live="polite">
+          <p class="mut">Cargando tu grupo…</p>
+        </div>
+      </div>
+
+      <!-- Notificaciones -->
+      <div class="seccion" id="sec-notificaciones" hidden>
+        <section class="card notif-cabecera">
+          <div>
+            <div class="grupo-titulo">Notificaciones</div>
+            <div class="mut" id="notif-resumen">Cargando…</div>
+          </div>
+          <button type="button" class="bo" id="btn-leer-todas" disabled>Marcar todas como leídas</button>
+        </section>
+        <div id="notif-lista" aria-live="polite"></div>
+      </div>
+
+      <!-- Secciones aún no disponibles -->
+      <div class="seccion" id="sec-pronto" hidden>
+        <section class="card pronto">
+          <div class="pronto-icono">
+            <svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21V11" stroke="#15803d" stroke-width="2" stroke-linecap="round"/><path d="M12 12C12 8 9 6 5 6.3C5 10 7.5 12.3 12 12Z" fill="#15803d"/><path d="M12 14C12 10.5 15 8.6 19 8.9C19 12.3 16.5 14.3 12 14Z" fill="#facc15"/></svg>
+          </div>
+          <h3 id="pronto-titulo">Sección</h3>
+          <p class="mut" style="margin:0"><b>Próximamente</b>. Esta sección estará disponible muy pronto.</p>
+          <a class="bo" href="#inicio">Volver al inicio</a>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.50.0/dist/umd/supabase.js"></script>
+<script src="js/config.js"></script>
+<script src="js/comun.js"></script>
+<script src="js/reloj.js"></script>
+<script src="js/panel.js"></script>
+</body>
+</html>

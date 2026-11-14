@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Sistema Siembra tu Futuro — Academia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/estilos.css">
+</head>
+<body class="cargando">
+
+<div class="app">
+  <nav class="sb" id="menu" aria-label="Menú principal">
+    <div class="sb-marca">Siembra tu Futuro</div>
+    <div class="sb-lema">Comunidad de ayuda mutua</div>
+    <a href="panel.html#inicio">Inicio</a>
+    <a href="panel.html#niveles">Niveles</a>
+    <a href="panel.html#mi-grupo">Mi grupo</a>
+    <a href="panel.html#chat">Chat</a>
+    <a href="panel.html#notificaciones">Notificaciones<span class="badge" id="badge-notif" hidden></span></a>
+    <a href="info-personal.html">Info personal</a>
+    <a href="academia.html" class="on" aria-current="page">Academia</a>
+    <a href="perfil.html">Perfil</a>
+    <a href="soporte.html">Soporte</a>
+    <a href="admin.html" id="link-admin" class="link-admin" hidden>Administración</a>
+    <a href="#" class="salir" data-salir>Cerrar sesión</a>
+  </nav>
+
+  <div class="contenido">
+    <header class="topbar">
+      <button type="button" class="btn-menu" id="btn-menu" aria-label="Abrir menú" aria-controls="menu" aria-expanded="false">
+        <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        <span class="badge badge-menu" id="badge-menu" hidden></span>
+      </button>
+      <h2 class="hd">Academia</h2>
+      <div class="avatar" id="avatar" aria-hidden="true"></div>
+    </header>
+
+    <main class="mn">
+      <section class="ban">
+        <h3>Academia</h3>
+        <div class="ban-sub">Aprende a participar paso a paso.</div>
+      </section>
+      <!--
+        PENDIENTE: aquí irá la lista de lecciones (título, video, descripción) administrada por
+        el administrador desde Administración (tabla nueva en Supabase con RLS de lectura para
+        usuarios con sesión y escritura solo con una función security definer que use es_admin()).
+      -->
+      <section class="card pronto">
+        <div class="pronto-icono">
+          <svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8l9-4 9 4-9 4-9-4z" fill="#15803d"/><path d="M7 10.5V15c0 1.5 2.2 3 5 3s5-1.5 5-3v-4.5" stroke="#15803d" stroke-width="2" fill="none"/><path d="M21 8v6" stroke="#facc15" stroke-width="2" stroke-linecap="round"/></svg>
+        </div>
+        <h3>Muy pronto</h3>
+        <p class="mut" style="margin:0">Estamos preparando el contenido. Muy pronto encontrarás aquí videos y guías para aprender a participar.</p>
+        <a class="bo" href="panel.html#inicio">Volver al inicio</a>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.50.0/dist/umd/supabase.js"></script>
+<script src="js/config.js"></script>
+<script src="js/comun.js"></script>
+<script src="js/pagina.js"></script>
+<script>
+  // Academia: por ahora solo se protege la página y se arma el menú.
+  iniciarPagina(crearClienteSupabase());
+</script>
+</body>
+</html>

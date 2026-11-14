@@ -1,0 +1,32 @@
+# Sistema Siembra tu Futuro — archivos que NO se publican en GitHub Pages
+
+# Maquetas, prompts y borradores (la web no los usa)
+diseno/
+
+# Notas internas del proyecto
+CLAUDE.md
+.claude/
+notas*
+*.txt
+
+# Comprimidos y copias
+*.zip
+*.rar
+*.7z
+*.bak
+
+# Claves, variables de entorno y datos reales (nunca subir)
+.env
+.env.*
+*.key
+*.pem
+supabase/.temp/
+supabase/*datos*.sql
+supabase/*backup*.sql
+
+# Sistema operativo y editores
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
