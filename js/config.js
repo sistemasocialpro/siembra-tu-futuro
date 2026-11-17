@@ -4,6 +4,10 @@
 const SUPABASE_URL = 'https://ghhtxdgavyocdisjatjx.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_DvJdQ2Z9f5rtlSE4dnxXWA_q5X-hmxM';
 
+// Dirección pública del sistema: el correo de "¿Olvidaste tu clave?" devuelve a la persona aquí.
+// Debe estar en Supabase → Authentication → URL Configuration → Redirect URLs.
+const URL_SITIO = 'https://sistemasocialpro.github.io/siembra-tu-futuro/';
+
 // Los enlaces de soporte (Telegram, Linktree, WhatsApp, correo) ya no van aquí: se editan en
 // Administración → Configuración → Enlaces de soporte (tabla enlaces_soporte).
 
@@ -38,13 +42,17 @@ function almacenamientoSesion() {
   }
 }
 
-function crearClienteSupabase() {
+// leerEnlace = true solo en la portada (index.html): lee la sesión que trae el enlace del correo
+// de "¿Olvidaste tu clave?" y dispara el evento PASSWORD_RECOVERY. Flujo implícito: el enlace
+// funciona aunque se abra en otro dispositivo distinto al que pidió el correo.
+function crearClienteSupabase(leerEnlace) {
   return window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     auth: {
       storage: almacenamientoSesion(),
       persistSession: true,
       autoRefreshToken: true,
-      detectSessionInUrl: false
+      flowType: 'implicit',
+      detectSessionInUrl: !!leerEnlace
     }
   });
 }
