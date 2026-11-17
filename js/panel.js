@@ -5,7 +5,7 @@
   const sb = crearClienteSupabase();
 
   // ---------- Protección: sin sesión -> index.html ----------
-  const session = await exigirSesion(sb);
+  const session = await exigirParticipante(sb);
   if (!session) return;
   const miId = session.user.id;
   document.body.classList.remove('cargando');

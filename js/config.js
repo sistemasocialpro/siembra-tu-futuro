@@ -38,15 +38,27 @@ function almacenamientoSesion() {
   }
 }
 
-function crearClienteSupabase() {
+// op.leerEnlace = true solo al volver del correo de "¿Olvidaste tu clave?": el cliente lee el
+// enlace (#access_token…&type=recovery) y avisa con el evento PASSWORD_RECOVERY.
+function crearClienteSupabase(op) {
   return window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     auth: {
       storage: almacenamientoSesion(),
       persistSession: true,
       autoRefreshToken: true,
-      detectSessionInUrl: false
+      detectSessionInUrl: !!(op && op.leerEnlace)
     }
   });
+}
+
+// ---- A dónde entra cada cuenta ----
+// Participante (tiene perfil) -> panel.html. Administrador sin perfil (cuenta separada que no
+// participa, ver supabase/15_admin_separado.sql) -> admin.html. Sin perfil y sin ser admin -> null.
+async function paginaDeInicio(sb, userId) {
+  const { data: perfil, error } = await sb.from('perfiles').select('id').eq('id', userId).maybeSingle();
+  if (error || perfil) return 'panel.html';
+  const { data: esAdmin } = await sb.rpc('es_admin');
+  return esAdmin === true ? 'admin.html' : null;
 }
 
 // ---- WhatsApp: misma lógica que public.normalizar_whatsapp() (14_whatsapp_formato.sql) ----

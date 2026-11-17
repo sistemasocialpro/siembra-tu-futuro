@@ -16,15 +16,15 @@
   <nav class="sb" id="menu" aria-label="Menú principal">
     <div class="sb-marca">Siembra tu Futuro</div>
     <div class="sb-lema">Comunidad de ayuda mutua</div>
-    <a href="panel.html#inicio">Inicio</a>
-    <a href="panel.html#niveles">Niveles</a>
-    <a href="panel.html#mi-grupo">Mi grupo</a>
-    <a href="panel.html#chat">Chat</a>
-    <a href="panel.html#notificaciones">Notificaciones</a>
-    <a href="info-personal.html">Info personal</a>
-    <a href="academia.html">Academia</a>
-    <a href="perfil.html">Perfil</a>
-    <a href="soporte.html">Soporte</a>
+    <a href="panel.html#inicio" class="solo-participante">Inicio</a>
+    <a href="panel.html#niveles" class="solo-participante">Niveles</a>
+    <a href="panel.html#mi-grupo" class="solo-participante">Mi grupo</a>
+    <a href="panel.html#chat" class="solo-participante">Chat</a>
+    <a href="panel.html#notificaciones" class="solo-participante">Notificaciones</a>
+    <a href="info-personal.html" class="solo-participante">Info personal</a>
+    <a href="academia.html" class="solo-participante">Academia</a>
+    <a href="perfil.html" class="solo-participante">Perfil</a>
+    <a href="soporte.html" class="solo-participante">Soporte</a>
     <a href="admin.html" class="link-admin on" aria-current="page">Administración</a>
     <a href="#" class="salir" data-salir>Cerrar sesión</a>
   </nav>
@@ -51,28 +51,27 @@
       <!-- Usuarios -->
       <section id="pan-usuarios" role="tabpanel" aria-labelledby="tab-usuarios" class="seccion">
         <div class="card barra-admin">
-          <input class="in buscador" id="buscar-usuarios" type="search" placeholder="Buscar por usuario, nombre, WhatsApp o código…" aria-label="Buscar usuarios">
+          <input class="in buscador" id="buscar-usuarios" type="search" placeholder="Buscar por usuario, nombre, correo, WhatsApp o código…" aria-label="Buscar usuarios">
           <div class="mut" id="cuenta-usuarios"></div>
-          <div class="botones-pronto">
-            <button type="button" class="bo" disabled title="Se hará con Edge Functions en otra fase">Restablecer contraseña · Próximamente</button>
-            <button type="button" class="bt-salir" disabled title="Se hará con Edge Functions en otra fase">Eliminar cuenta · Próximamente</button>
-          </div>
         </div>
+        <p class="mut ayuda-orden">Para mover a alguien de casilla usa la pestaña <b>Grupos</b> (Asignar, Reemplazar o Quitar). Aquí puedes ponerle una <b>contraseña nueva</b> o <b>eliminar su cuenta</b>. Las cuentas de administrador no aparecen en esta lista.</p>
         <div class="tabla-wrap">
           <table class="tabla">
             <thead>
               <tr>
                 <th scope="col">Usuario</th>
                 <th scope="col">Nombre completo</th>
+                <th scope="col">Correo</th>
                 <th scope="col">WhatsApp</th>
                 <th scope="col">Código</th>
                 <th scope="col">Invitado por</th>
                 <th scope="col">Fecha</th>
                 <th scope="col">Fundador</th>
+                <th scope="col">Cuenta</th>
               </tr>
             </thead>
             <tbody id="tabla-usuarios">
-              <tr><td colspan="7" class="mut">Cargando usuarios…</td></tr>
+              <tr><td colspan="9" class="mut">Cargando usuarios…</td></tr>
             </tbody>
           </table>
         </div>
@@ -171,7 +170,7 @@
 
         <form class="card form-config" id="form-enlaces" novalidate>
           <h3>Enlaces de soporte</h3>
-          <p class="mut">Se muestran en la página Soporte. Un enlace inactivo aparece atenuado como "Próximamente". El WhatsApp activo también aparece en la portada ("WhatsApp" y "¿Olvidaste tu contraseña?").</p>
+          <p class="mut">Se muestran en la página Soporte. Un enlace inactivo aparece atenuado como "Próximamente". El WhatsApp activo también aparece en la portada (botón "WhatsApp" y, en "¿Olvidaste tu clave?", la opción "Escríbenos por WhatsApp").</p>
           <div class="enlaces-lista">
             <div class="enlace-fila">
               <label class="lb" for="enl-telegram">Canal de Telegram <span class="ayuda">Empieza con https://</span>
