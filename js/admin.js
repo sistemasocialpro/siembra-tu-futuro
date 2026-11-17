@@ -9,6 +9,11 @@
   if (!session) return;
   const { data: esAdmin, error: errAdmin } = await sb.rpc('es_admin');
   if (errAdmin || esAdmin !== true) { location.replace('panel.html'); return; }
+
+  // Cuenta de administrador separada (sin perfil): no participa, así que el menú solo
+  // muestra Administración y Cerrar sesión.
+  const { data: miPerfil } = await sb.from('perfiles').select('nombre_usuario').eq('id', session.user.id).maybeSingle();
+  if (!miPerfil) document.querySelectorAll('#menu .solo-participante').forEach((a) => { a.hidden = true; });
   document.body.classList.remove('cargando');
 
   iniciarCerrarSesion(sb);
@@ -17,6 +22,7 @@
   // ---------- Estado ----------
   let perfiles = [];
   let perfilPorId = {};
+  let correoPorId = {};
   let niveles = [];
   let ocupado = false;
 
@@ -106,32 +112,41 @@
   // =====================================================================
   // USUARIOS
   // =====================================================================
+  // Correos de los participantes (admin_correos, 15). Si falta el SQL, la columna queda en "—".
+  async function cargarCorreos() {
+    const { data, error } = await sb.rpc('admin_correos');
+    correoPorId = {};
+    if (error) return;
+    (data || []).forEach((c) => { correoPorId[c.user_id] = c.email; });
+  }
+
   async function cargarUsuarios() {
     try {
-      await cargarPerfiles();
+      await Promise.all([cargarPerfiles(), cargarCorreos()]);
       pintarUsuarios();
     } catch (err) {
       const tb = $('tabla-usuarios');
       vaciar(tb);
-      tb.appendChild(el('tr', null, el('td', { colspan: '7', class: 'msg error', text: 'No se pudieron cargar los usuarios. ' + traducirErrorDatos(err) })));
+      tb.appendChild(el('tr', null, el('td', { colspan: '9', class: 'msg error', text: 'No se pudieron cargar los usuarios. ' + traducirErrorDatos(err) })));
     }
   }
 
   function pintarUsuarios() {
     const q = normalizar($('buscar-usuarios').value.trim());
     const visibles = perfiles.filter((p) => !q ||
-      [p.nombre_usuario, p.nombre_completo, p.whatsapp, p.codigo_invitacion, nombreDe(p.invitado_por)]
+      [p.nombre_usuario, p.nombre_completo, correoPorId[p.id], p.whatsapp, p.codigo_invitacion, nombreDe(p.invitado_por)]
         .some((v) => normalizar(v).includes(q))
     );
     const tb = $('tabla-usuarios');
     vaciar(tb);
     if (!visibles.length) {
-      tb.appendChild(el('tr', null, el('td', { colspan: '7', class: 'mut', text: perfiles.length ? 'Ningún usuario coincide con la búsqueda.' : 'Todavía no hay usuarios registrados.' })));
+      tb.appendChild(el('tr', null, el('td', { colspan: '9', class: 'mut', text: perfiles.length ? 'Ningún usuario coincide con la búsqueda.' : 'Todavía no hay usuarios registrados.' })));
     }
     visibles.forEach((p) => {
       tb.appendChild(el('tr', null,
         el('td', null, el('b', { text: p.nombre_usuario })),
         el('td', { text: p.nombre_completo || '—' }),
+        el('td', { text: correoPorId[p.id] || '—' }),
         el('td', null, p.whatsapp
           ? el('a', { class: 'link', href: enlaceWhatsApp(p.whatsapp, 'Hola ' + p.nombre_usuario + ', te escribo de Siembra tu Futuro.'), target: '_blank', rel: 'noopener', text: p.whatsapp })
           : '—'),
@@ -142,7 +157,10 @@
           ? el('div', { class: 'celda-fundador' },
               el('span', { class: 'pill pill-verde', text: 'Fundador' }),
               el('button', { type: 'button', class: 'cb cb-quitar', onclick: () => cambiarFundador(p, false), text: 'Quitar' }))
-          : el('button', { type: 'button', class: 'cb', onclick: () => cambiarFundador(p, true), text: 'Marcar como fundador' }))
+          : el('button', { type: 'button', class: 'cb', onclick: () => cambiarFundador(p, true), text: 'Marcar como fundador' })),
+        el('td', null, el('div', { class: 'celda-fundador' },
+          el('button', { type: 'button', class: 'cb', onclick: () => cambiarClave(p), text: 'Cambiar clave' }),
+          el('button', { type: 'button', class: 'cb cb-quitar', onclick: () => eliminarCuenta(p), text: 'Eliminar cuenta' })))
       ));
     });
     $('cuenta-usuarios').textContent = q
@@ -150,6 +168,75 @@
       : perfiles.length + (perfiles.length === 1 ? ' usuario' : ' usuarios');
   }
   $('buscar-usuarios').addEventListener('input', pintarUsuarios);
+
+  // En los campos de una ventana, Enter = botón de confirmar (no "Cancelar", que va primero)
+  function enterConfirma(e) {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    $('dlg-confirmar-ok').click();
+  }
+
+  // Contraseña nueva para un participante (admin_cambiar_clave, 15)
+  async function cambiarClave(p) {
+    if (ocupado) return;
+    const in1 = el('input', { class: 'in', id: 'adm-clave-1', type: 'password', autocomplete: 'new-password', maxlength: '72', onkeydown: enterConfirma });
+    const in2 = el('input', { class: 'in', id: 'adm-clave-2', type: 'password', autocomplete: 'new-password', maxlength: '72', onkeydown: enterConfirma });
+    const err = el('span', { class: 'err', 'aria-live': 'polite' });
+    const extra = el('div', null,
+      el('label', { class: 'lb', for: 'adm-clave-1' }, 'Contraseña nueva (mín. 6)', in1),
+      el('label', { class: 'lb', for: 'adm-clave-2' }, 'Repite la contraseña', in2),
+      err
+    );
+    let clave = '';
+    for (;;) {
+      const si = await confirmar({
+        titulo: 'Cambiar contraseña',
+        texto: ['Escribe la contraseña nueva de ', el('b', { text: p.nombre_usuario }),
+          '. Se cerrarán sus sesiones abiertas y tendrá que entrar con la clave nueva. Envíasela por un medio seguro.'],
+        extra,
+        boton: 'Guardar contraseña'
+      });
+      if (!si) return;
+      clave = in1.value;
+      if (clave.length < 6) err.textContent = 'La contraseña debe tener al menos 6 caracteres.';
+      else if (clave !== in2.value) err.textContent = 'Las contraseñas no coinciden.';
+      else break;
+    }
+    await ejecutar(
+      () => sb.rpc('admin_cambiar_clave', { p_user_id: p.id, p_clave: clave }),
+      'La contraseña de ' + p.nombre_usuario + ' fue cambiada.'
+    );
+  }
+
+  // Eliminar la cuenta de un participante (admin_eliminar_cuenta, 15): libera sus casillas,
+  // avisa a su patrocinador y a su recibidor, y borra la cuenta.
+  async function eliminarCuenta(p) {
+    if (ocupado) return;
+    const conf = el('input', { class: 'in', id: 'adm-eliminar-conf', type: 'text', autocomplete: 'off', autocapitalize: 'characters', onkeydown: enterConfirma });
+    const err = el('span', { class: 'err', 'aria-live': 'polite' });
+    const extra = el('div', null,
+      el('label', { class: 'lb', for: 'adm-eliminar-conf' }, 'Para confirmar escribe ELIMINAR', conf),
+      err
+    );
+    for (;;) {
+      const si = await confirmar({
+        titulo: 'Eliminar cuenta',
+        texto: ['¿Eliminar la cuenta de ', el('b', { text: p.nombre_usuario }),
+          '? Se liberan sus casillas en todos los niveles, se avisa a su patrocinador y a su recibidor, y la cuenta se borra para siempre. Si es recibidor de un grupo con personas, primero reemplázalo en Grupos.'],
+        extra,
+        boton: 'Eliminar cuenta',
+        peligro: true
+      });
+      if (!si) return;
+      if (conf.value.trim().toUpperCase() === 'ELIMINAR') break;
+      err.textContent = 'Escribe ELIMINAR para confirmar.';
+    }
+    const ok = await ejecutar(
+      () => sb.rpc('admin_eliminar_cuenta', { p_user_id: p.id }),
+      'La cuenta de ' + p.nombre_usuario + ' fue eliminada.'
+    );
+    if (ok) { cargarUsuarios(); actualizarBadgeEspera(); }
+  }
 
   // Fundador: en todos los niveles menos el primero crea su propio grupo como recibidor al tocar Participar
   async function cambiarFundador(p, valor) {

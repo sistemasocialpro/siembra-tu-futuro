@@ -5,7 +5,7 @@
 // administración (solo admins), badge de notificaciones e inicial del avatar.
 
 async function iniciarPagina(sb) {
-  const session = await exigirSesion(sb);
+  const session = await exigirParticipante(sb);
   if (!session) return null;
   document.body.classList.remove('cargando');
 

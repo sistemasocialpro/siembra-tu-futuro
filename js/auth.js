@@ -1,42 +1,36 @@
-// Inicio de sesión, registro y recuperación de contraseña (index.html)
+// Inicio de sesión y registro (index.html)
 (function () {
   'use strict';
 
   const $ = (id) => document.getElementById(id);
   const RE_CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const MIN_CLAVE_NUEVA = 6;
+  // A dónde vuelve la persona desde el correo de "¿Olvidaste tu clave?". Esta dirección debe
+  // estar en Supabase → Authentication → URL Configuration → Redirect URLs.
+  const URL_RECUPERAR = 'https://sistemasocialpro.github.io/siembra-tu-futuro/';
 
-  // ---------- ¿Viene del enlace del correo de "¿Olvidaste tu clave?"? ----------
-  // Supabase devuelve a la persona con #access_token=…&type=recovery (o #error=… si el
-  // enlace venció o ya se usó). El cliente lee ese enlace y dispara PASSWORD_RECOVERY.
+  // ¿Viene del enlace del correo? (#access_token=…&type=recovery o #error_code=otp_expired…)
   const hashURL = new URLSearchParams(location.hash.replace(/^#/, ''));
-  let recuperando = hashURL.get('type') === 'recovery';
-  const enlaceConError = !!(hashURL.get('error_code') || hashURL.get('error'));
-  let sb = crearClienteSupabase(true);
+  const vieneDeRecuperacion = hashURL.get('type') === 'recovery';
+  const errorEnlace = hashURL.get('error_code') || hashURL.get('error');
+
+  let sb = crearClienteSupabase({ leerEnlace: vieneDeRecuperacion });
+
+  // Entra a panel.html (participante) o admin.html (administrador sin perfil)
+  async function irAlInicio(session) {
+    const destino = await paginaDeInicio(sb, session.user.id);
+    location.replace(destino || 'panel.html');
+  }
 
   function limpiarEnlace() {
     if (location.hash) history.replaceState(null, '', location.pathname + location.search);
   }
 
-  sb.auth.onAuthStateChange((evento) => {
-    if (evento === 'PASSWORD_RECOVERY') {
-      recuperando = true;
-      abrirNuevaClave();
-    }
-  });
-
-  // Si ya hay sesión, ir directo al panel (salvo que esté cambiando su clave)
-  sb.auth.getSession().then(({ data }) => {
-    const sesion = data && data.session;
-    if (enlaceConError || (recuperando && !sesion)) {
-      limpiarEnlace();
-      recuperando = false;
-      mostrarTab('olvide');
-      return mostrarMsg($('olvide-msg'), 'El enlace para cambiar tu clave venció o ya se usó. Escribe tu correo y te enviaremos uno nuevo.');
-    }
-    if (recuperando) return abrirNuevaClave();
-    if (sesion) location.replace('panel.html');
-  });
+  // Si ya hay sesión, ir directo al panel (salvo que venga a crear su clave nueva)
+  if (!vieneDeRecuperacion) {
+    sb.auth.getSession().then(({ data }) => {
+      if (data && data.session) irAlInicio(data.session);
+    });
+  }
 
   // ---------- Mensajes ----------
   function mostrarMsg(el, texto, tipo) {
@@ -73,10 +67,6 @@
       return 'Tu correo todavía no está confirmado.';
     if (/rate limit|too many/i.test(msg) || /rate_limit/.test(code))
       return 'Demasiados intentos. Espera unos minutos y vuelve a intentarlo.';
-    if (code === 'same_password' || /should be different from the old/i.test(msg))
-      return 'La nueva clave debe ser distinta a la anterior.';
-    if (code === 'session_not_found' || /auth session missing/i.test(msg))
-      return 'El enlace para cambiar tu clave venció. Pide uno nuevo desde "¿Olvidaste tu clave?".';
     if (/database error saving new user/i.test(msg))
       return 'No se pudo crear tu perfil. Es posible que ese nombre de usuario ya esté en uso; prueba con otro.';
     if (code === 'PGRST202' || code === '42883' || /could not find the function/i.test(msg))
@@ -87,27 +77,30 @@
   }
 
   // ---------- Pestañas ----------
-  // login y registro tienen pestaña; olvide y nueva (clave) son pantallas sin pestañas
-  const forms = {
-    login: $('form-login'), registro: $('form-registro'),
-    olvide: $('form-olvide'), nueva: $('form-nueva')
-  };
+  const forms = { login: $('form-login'), registro: $('form-registro') };
   const tabs = { login: $('tab-login'), registro: $('tab-registro') };
-  let pantalla = 'login';
 
   // Registro bloqueado ({ titulo, texto }): se muestra el aviso en lugar del formulario
   let bloqueo = null;
 
+  // Vistas sin pestañas: 'olvide' (pedir el enlace) y 'nueva' (escribir la clave nueva)
+  const vistas = { olvide: $('form-olvide'), nueva: $('form-nueva-clave') };
+  function mostrarVista(nombre) {
+    $('tabs-acceso').hidden = true;
+    Object.values(forms).forEach((f) => { f.hidden = true; });
+    $('reg-bloqueado').hidden = true;
+    Object.keys(vistas).forEach((k) => { vistas[k].hidden = k !== nombre; });
+    document.querySelector('.acceso-card').classList.remove('ancha');
+  }
+
   function mostrarTab(nombre) {
-    // Mientras cambia su clave desde el correo, no se sale de esa pantalla
-    if (recuperando && nombre !== 'nueva') return;
-    pantalla = nombre;
+    $('tabs-acceso').hidden = false;
+    Object.values(vistas).forEach((v) => { v.hidden = true; });
     Object.keys(forms).forEach((k) => {
-      forms[k].hidden = k !== nombre || (k === 'registro' && !!bloqueo);
+      const activo = k === nombre;
+      forms[k].hidden = !activo || (k === 'registro' && !!bloqueo);
+      tabs[k].setAttribute('aria-selected', activo ? 'true' : 'false');
     });
-    Object.keys(tabs).forEach((k) => tabs[k].setAttribute('aria-selected', k === nombre ? 'true' : 'false'));
-    $('tabs-acceso').hidden = !(nombre in tabs);
-    if (nombre === 'olvide' && !$('olvide-correo').value) $('olvide-correo').value = $('login-id').value.trim();
     $('reg-bloqueado').hidden = !(nombre === 'registro' && bloqueo);
     // El registro usa dos columnas: tarjeta un poco más ancha
     document.querySelector('.acceso-card').classList.toggle('ancha', nombre === 'registro');
@@ -124,14 +117,16 @@
   if (REDES.instagram) { $('red-instagram').href = REDES.instagram; $('red-instagram').hidden = false; }
   if (REDES.tiktok) { $('red-tiktok').href = REDES.tiktok; $('red-tiktok').hidden = false; }
 
-  // En "Recupera tu clave", si el correo no llega: ayuda por WhatsApp de soporte
-  const olvideWa = $('olvide-wa');
+  // Si el WhatsApp de soporte está activo, la pantalla "¿Olvidaste tu clave?" ofrece escribir
+  // por WhatsApp cuando no llega el correo.
   const redWa = $('red-whatsapp');
+  const olvideWa = $('olvide-wa');
   redWa.hidden = true;
   let soporteWa = null;
   function actualizarOlvideWa() {
+    if (!soporteWa) return;
     const correo = $('olvide-correo').value.trim();
-    let texto = 'Hola, olvidé mi contraseña de Siembra tu Futuro y no me llega el correo para recuperarla.';
+    let texto = 'Hola, olvidé mi clave de Siembra tu Futuro y no me llega el correo para recuperarla.';
     if (correo) texto += ' Mi correo es: ' + correo;
     olvideWa.href = enlaceWhatsApp(soporteWa, texto);
   }
@@ -141,28 +136,37 @@
     redWa.href = enlaceWhatsApp(soporteWa, 'Hola, quiero información sobre Siembra tu Futuro.');
     redWa.hidden = false;
     actualizarOlvideWa();
-    $('olvide-ayuda').hidden = false;
+    $('olvide-wa-fila').hidden = false;
     $('olvide-correo').addEventListener('input', actualizarOlvideWa);
     olvideWa.addEventListener('click', actualizarOlvideWa);
   });
 
-  // ---------- ¿Olvidaste tu clave?: enviar el enlace al correo ----------
-  forms.olvide.addEventListener('submit', async (e) => {
+  // ---------- ¿Olvidaste tu clave? ----------
+  $('olvide').addEventListener('click', (e) => {
+    e.preventDefault();
+    ocultarMsg($('olvide-msg'));
+    const correoLogin = $('login-id').value.trim();
+    if (correoLogin && !$('olvide-correo').value) $('olvide-correo').value = correoLogin;
+    actualizarOlvideWa();
+    mostrarVista('olvide');
+    $('olvide-correo').focus();
+  });
+
+  vistas.olvide.addEventListener('submit', async (e) => {
     e.preventDefault();
     const msg = $('olvide-msg');
     const boton = $('olvide-btn');
     ocultarMsg(msg);
-
     const email = $('olvide-correo').value.trim();
     if (!email) return mostrarMsg(msg, 'Escribe tu correo.');
     if (!RE_CORREO.test(email)) return mostrarMsg(msg, 'El correo no es válido. Revísalo e inténtalo de nuevo.');
 
     cargando(boton, true, 'Enviando…');
     try {
-      const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: URL_SITIO });
+      const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: URL_RECUPERAR });
       if (error) throw error;
-      // Supabase no dice si el correo existe (para no revelar quién está registrado)
-      mostrarMsg(msg, 'Listo. Si ese correo está registrado, te llegará un enlace para crear tu nueva clave. Revisa también la carpeta de spam o correo no deseado.', 'ok');
+      // Mismo mensaje exista o no la cuenta (no se revela quién está registrado)
+      mostrarMsg(msg, 'Listo. Si ese correo está registrado, te enviamos un enlace para crear tu clave nueva. Revisa también la carpeta de spam o correo no deseado.', 'ok');
     } catch (err) {
       mostrarMsg(msg, traducirError(err));
     } finally {
@@ -170,71 +174,74 @@
     }
   });
 
-  // ---------- Nueva clave (al volver desde el correo) ----------
+  // ---------- Clave nueva (vuelve desde el correo) ----------
+  let pantallaNuevaLista = false;
   function abrirNuevaClave() {
+    if (pantallaNuevaLista) return;
+    pantallaNuevaLista = true;
     limpiarEnlace();
-    if (pantalla === 'nueva') return;
-    mostrarTab('nueva');
+    mostrarVista('nueva');
     $('nueva-pass').focus();
   }
 
-  const VALIDAR_NUEVA = {
-    'nueva-pass': () => {
-      const v = $('nueva-pass').value;
-      if (!v) return 'Escribe tu nueva contraseña.';
-      if (v.length < MIN_CLAVE_NUEVA) return 'Debe tener al menos ' + MIN_CLAVE_NUEVA + ' caracteres.';
-      return '';
-    },
-    'nueva-pass2': () => {
-      const v = $('nueva-pass2').value;
-      if (!v) return 'Repite la nueva contraseña.';
-      if (v !== $('nueva-pass').value) return 'Las contraseñas no coinciden.';
-      return '';
-    }
-  };
-  Object.keys(VALIDAR_NUEVA).forEach((id) => {
-    $(id).addEventListener('input', () => {
-      if ($(id).getAttribute('aria-invalid')) ponerError(id, VALIDAR_NUEVA[id]());
-      if (id === 'nueva-pass' && $('nueva-pass2').getAttribute('aria-invalid'))
-        ponerError('nueva-pass2', VALIDAR_NUEVA['nueva-pass2']());
+  if (errorEnlace) {
+    // Enlace vencido o ya usado
+    limpiarEnlace();
+    mostrarVista('olvide');
+    mostrarMsg($('olvide-msg'), 'El enlace para cambiar tu clave ya venció o ya fue usado. Escribe tu correo y pide uno nuevo.');
+  } else if (vieneDeRecuperacion) {
+    // supabase-js lee el enlace y avisa con PASSWORD_RECOVERY
+    sb.auth.onAuthStateChange((evento) => {
+      if (evento === 'PASSWORD_RECOVERY') abrirNuevaClave();
     });
-  });
+    // Respaldo: si el evento ya pasó, basta con que exista la sesión del enlace
+    sb.auth.getSession().then(({ data }) => {
+      if (data && data.session) return abrirNuevaClave();
+      limpiarEnlace();
+      mostrarVista('olvide');
+      mostrarMsg($('olvide-msg'), 'El enlace para cambiar tu clave no es válido o ya venció. Escribe tu correo y pide uno nuevo.');
+    });
+  }
 
-  forms.nueva.addEventListener('submit', async (e) => {
+  function errorNuevaClave(id, texto) {
+    $('err-' + id).textContent = texto;
+    if (texto) $(id).setAttribute('aria-invalid', 'true'); else $(id).removeAttribute('aria-invalid');
+  }
+
+  vistas.nueva.addEventListener('submit', async (e) => {
     e.preventDefault();
     const msg = $('nueva-msg');
     const boton = $('nueva-btn');
     ocultarMsg(msg);
-
-    let primeroMal = null;
-    Object.keys(VALIDAR_NUEVA).forEach((id) => {
-      const texto = VALIDAR_NUEVA[id]();
-      ponerError(id, texto);
-      if (texto && !primeroMal) primeroMal = $(id);
-    });
-    if (primeroMal) {
-      primeroMal.focus();
-      return mostrarMsg(msg, 'Revisa los campos marcados en rojo.');
-    }
+    const p1 = $('nueva-pass').value;
+    const p2 = $('nueva-pass2').value;
+    errorNuevaClave('nueva-pass', !p1 ? 'Escribe tu clave nueva.' : (p1.length < 6 ? 'Debe tener al menos 6 caracteres.' : ''));
+    errorNuevaClave('nueva-pass2', !p2 ? 'Repite la clave nueva.' : (p1 !== p2 ? 'Las claves no coinciden.' : ''));
+    if (!p1 || p1.length < 6) { $('nueva-pass').focus(); return mostrarMsg(msg, 'Revisa los campos marcados en rojo.'); }
+    if (p1 !== p2) { $('nueva-pass2').focus(); return mostrarMsg(msg, 'Revisa los campos marcados en rojo.'); }
 
     cargando(boton, true, 'Guardando…');
-    let guardada = false;
     try {
-      const { error } = await sb.auth.updateUser({ password: $('nueva-pass').value });
+      const { data, error } = await sb.auth.updateUser({ password: p1 });
       if (error) throw error;
-      guardada = true;
-      mostrarMsg(msg, '¡Listo! Tu nueva clave quedó guardada. Entrando a tu panel…', 'ok');
-      setTimeout(() => location.replace('panel.html'), 1800);
+      mostrarMsg(msg, '¡Listo! Tu clave nueva quedó guardada. Entrando…', 'ok');
+      boton.disabled = true;
+      setTimeout(() => irAlInicio({ user: data.user }), 1500);
     } catch (err) {
       const code = String((err && err.code) || '');
-      mostrarMsg(msg, code === 'weak_password' || /password should|password is too/i.test(String(err && err.message))
-        ? 'Esa clave es muy débil. Prueba con una más larga y combina letras y números.'
-        : traducirError(err));
-    } finally {
+      const texto = String((err && err.message) || '');
+      if (code === 'same_password' || /different from the old/i.test(texto))
+        mostrarMsg(msg, 'La clave nueva debe ser distinta de la anterior.');
+      else if (code === 'weak_password' || /password should|password is too/i.test(texto))
+        mostrarMsg(msg, 'La clave es muy débil. Usa al menos 6 caracteres, mejor con letras y números.');
+      else if (code === 'session_not_found' || /auth session missing|session/i.test(texto))
+        mostrarMsg(msg, 'El enlace ya venció. Vuelve a pedir uno en "¿Olvidaste tu clave?".');
+      else
+        mostrarMsg(msg, traducirError(err));
       cargando(boton, false);
-      if (guardada) boton.disabled = true;
     }
   });
+  ['nueva-pass', 'nueva-pass2'].forEach((id) => $(id).addEventListener('input', () => errorNuevaClave(id, '')));
 
   // ---------- Cuenta eliminada (viene de "Salir y eliminar mi cuenta") ----------
   const params = new URLSearchParams(location.search);
@@ -261,7 +268,7 @@
     bloqueo = motivo;
     $('reg-bloq-titulo').textContent = motivo.titulo;
     $('reg-bloq-msg').textContent = motivo.texto;
-    if (pantalla === 'registro' || (refURL && pantalla === 'login')) mostrarTab('registro');
+    if (!forms.registro.hidden || refURL) mostrarTab('registro');
   }
 
   function codigoInvalido() {
@@ -270,7 +277,7 @@
     regInvito.hidden = false;
   }
 
-  if (refURL && !recuperando && !enlaceConError) mostrarTab('registro');
+  if (refURL) mostrarTab('registro');
 
   (async function revisarRegistro() {
     const rExige = await sb.rpc('registro_exige_link');
@@ -317,9 +324,9 @@
 
     cargando(boton, true, 'Entrando…');
     try {
-      const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+      const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
       if (error) throw error;
-      location.replace('panel.html');
+      await irAlInicio(data.session);
     } catch (err) {
       mostrarMsg(msg, traducirError(err));
     } finally {

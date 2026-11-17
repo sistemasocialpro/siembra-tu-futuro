@@ -94,6 +94,16 @@ async function exigirSesion(sb) {
   return session;
 }
 
+// Páginas de participante (panel, perfil, info personal, academia, soporte): el administrador
+// sin perfil (cuenta separada que no participa) va directo a admin.html.
+async function exigirParticipante(sb) {
+  const session = await exigirSesion(sb);
+  if (!session) return null;
+  const destino = await paginaDeInicio(sb, session.user.id);
+  if (destino === 'admin.html') { location.replace('admin.html'); return null; }
+  return session;
+}
+
 function iniciarCerrarSesion(sb) {
   document.querySelectorAll('[data-salir]').forEach((x) =>
     x.addEventListener('click', async (e) => {

@@ -44,42 +44,42 @@
         </label>
         <div class="fila-entre">
           <label class="check"><input type="checkbox" id="login-recordar" checked> Recordarme</label>
-          <a href="#" id="olvide" class="link" data-ir="olvide">¿Olvidaste tu clave?</a>
+          <a href="#" id="olvide" class="link">¿Olvidaste tu clave?</a>
         </div>
         <div id="login-msg" class="msg" role="alert" hidden></div>
         <button type="submit" class="btn btn-grande" id="login-btn">Iniciar sesión</button>
         <p class="mut centro">¿No tienes cuenta? <a href="#" class="link-fuerte" data-ir="registro">Regístrate</a></p>
       </form>
 
-      <!-- ¿Olvidaste tu clave?: pide el correo y envía el enlace (resetPasswordForEmail) -->
+      <!-- ¿Olvidaste tu clave?: pide el correo y envía el enlace -->
       <form id="form-olvide" novalidate hidden>
-        <h2>Recupera tu clave</h2>
-        <p class="mut">Escribe el correo con el que te registraste y te enviaremos un enlace para crear una clave nueva.</p>
+        <h2>¿Olvidaste tu clave?</h2>
+        <p class="mut">Escribe el correo con el que te registraste. Te enviaremos un enlace para crear una clave nueva.</p>
         <label class="lb">Correo
           <input class="in" id="olvide-correo" type="email" autocomplete="email" autocapitalize="none" spellcheck="false" required>
         </label>
         <div id="olvide-msg" class="msg" role="alert" hidden></div>
         <button type="submit" class="btn btn-grande" id="olvide-btn">Enviar enlace</button>
-        <p class="mut centro" id="olvide-ayuda" hidden>¿No te llega el correo? <a href="#" id="olvide-wa" class="link-fuerte" target="_blank" rel="noopener">Escríbenos por WhatsApp</a></p>
+        <p class="mut centro" id="olvide-wa-fila" hidden>¿No te llega el correo? <a href="#" id="olvide-wa" class="link-fuerte" target="_blank" rel="noopener">Escríbenos por WhatsApp</a></p>
         <p class="mut centro"><a href="#" class="link-fuerte" data-ir="login">Volver a iniciar sesión</a></p>
       </form>
 
-      <!-- Nueva clave: se muestra al volver desde el correo (evento PASSWORD_RECOVERY) -->
-      <form id="form-nueva" novalidate hidden>
-        <h2>Crea tu nueva clave</h2>
+      <!-- Clave nueva (al volver desde el enlace del correo) -->
+      <form id="form-nueva-clave" novalidate hidden>
+        <h2>Crea tu clave nueva</h2>
         <p class="mut">Escríbela dos veces. Debe tener al menos 6 caracteres.</p>
         <div class="campo">
-          <label class="lb" for="nueva-pass">Nueva contraseña</label>
-          <input class="in" id="nueva-pass" type="password" autocomplete="new-password" minlength="6" required aria-describedby="err-nueva-pass">
+          <label class="lb" for="nueva-pass">Clave nueva (mín. 6)</label>
+          <input class="in" id="nueva-pass" type="password" autocomplete="new-password" required aria-describedby="err-nueva-pass">
           <span class="err" id="err-nueva-pass" aria-live="polite"></span>
         </div>
         <div class="campo">
-          <label class="lb" for="nueva-pass2">Repite la nueva contraseña</label>
-          <input class="in" id="nueva-pass2" type="password" autocomplete="new-password" minlength="6" required aria-describedby="err-nueva-pass2">
+          <label class="lb" for="nueva-pass2">Repite la clave nueva</label>
+          <input class="in" id="nueva-pass2" type="password" autocomplete="new-password" required aria-describedby="err-nueva-pass2">
           <span class="err" id="err-nueva-pass2" aria-live="polite"></span>
         </div>
         <div id="nueva-msg" class="msg" role="alert" hidden></div>
-        <button type="submit" class="btn btn-grande" id="nueva-btn">Guardar nueva clave</button>
+        <button type="submit" class="btn btn-grande" id="nueva-btn">Guardar clave nueva</button>
       </form>
 
       <!-- Registro -->
