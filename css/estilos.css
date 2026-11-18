@@ -180,14 +180,14 @@ button, input { font-family: inherit; }
   }
   .acceso-card, .acceso-card.ancha {
     max-width: none; width: 100%; margin: 0; padding: 24px;
-    border-radius: 32px; box-shadow: 0 12px 32px rgba(20, 83, 45, .10);
+    border-radius: 36px; box-shadow: 0 12px 32px rgba(20, 83, 45, .10);
   }
   .card-logo { display: block; width: 92px; height: 92px; margin: 0 auto 18px; }
   .acceso-card .tabs { display: none; }
   .acceso-card form { gap: 14px; }
 
   /* Título y subtítulo */
-  .acceso-card h2 { font-size: 34px; font-weight: 800; line-height: 1.12; text-align: left; }
+  .acceso-card h2 { font-size: 40px; font-weight: 800; line-height: 1.12; text-align: left; }
   .acceso-card h2 + .mut, .acceso-card h2 + p.mut { font-size: 16px; color: var(--mut); }
 
   /* Sin etiquetas encima (siguen ahí para lectores de pantalla) */
