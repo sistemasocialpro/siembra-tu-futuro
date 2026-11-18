@@ -182,7 +182,7 @@ button, input { font-family: inherit; }
     max-width: none; width: 100%; margin: 0; padding: 24px;
     border-radius: 32px; box-shadow: 0 12px 32px rgba(20, 83, 45, .10);
   }
-  .card-logo { display: block; width: 72px; height: 72px; margin: 4px auto 18px; }
+  .card-logo { display: block; width: 92px; height: 92px; margin: 0 auto 18px; }
   .acceso-card .tabs { display: none; }
   .acceso-card form { gap: 14px; }
 
