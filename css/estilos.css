@@ -790,6 +790,12 @@ a.soporte-card:hover, a.soporte-card:focus-visible { border-color: var(--verde);
 .ref-sub { margin: 4px 0 0; font-size: 15px; }
 .ref-espera { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 12px; font-size: 14px; }
 .ref-botones { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+
+/* Repetir con mi equipo */
+.equipo-lista { list-style: none; margin: 8px 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.equipo-lista li { padding: 6px 10px; border-radius: 8px; background: var(--input); overflow-wrap: anywhere; }
+.equipo-lista li.equipo-libre { background: #fefce8; }
+.grupo-repetido { display: inline-block; margin: 4px 0 2px; padding: 3px 10px; border-radius: 99px; background: #fef9c3; color: var(--amarillo-osc); font-size: 13px; font-weight: 600; }
 .ref-elegir { background: #fefce8; border-radius: 10px; padding: 10px 12px; }
 .ref-espera .mut { font-size: 13px; }
 .ref-nota { margin: 0; }

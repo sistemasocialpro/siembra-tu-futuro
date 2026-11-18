@@ -49,48 +49,26 @@
   function nivelPorId(niveles, id) {
     return niveles.find((n) => n.id === id) || { id, nombre: '—', orden: 0 };
   }
-  // ---------- Mis datos por nivel y VUELTA ----------
-  // Con el SQL 18 se usa mis_vueltas() (posiciones, espera y ciclos con su vuelta, y en qué vuelta
-  // puedo entrar a cada nivel). Sin el SQL 18 se leen las tablas como antes (todo en la vuelta 1).
-  let sinVueltas = false;
+  // ---------- Mis datos por nivel (una posición activa por nivel; SQL 25: ya no hay vueltas) ----------
   async function leerMisDatos() {
-    if (!sinVueltas) {
-      const { data, error } = await sb.rpc('mis_vueltas');
-      if (!error && data) {
-        const puede = {};
-        (data.puede_participar || []).forEach((x) => { puede[x.nivel_id] = x.vuelta; });
-        return {
-          conVueltas: true,
-          vueltaActual: data.vuelta_actual || 1,
-          referidos: data.referidos,
-          posiciones: data.posiciones || [],
-          espera: data.espera || [],
-          ciclos: data.ciclos || [],
-          puede
-        };
-      }
-      if (error && !['PGRST202', '42883'].includes(String(error.code))) throw error;
-      sinVueltas = true; // falta el SQL 18: modo anterior
-    }
     const [p, e, c] = await Promise.all([
       sb.from('posiciones').select('id, grupo_id, nivel_id, posicion, estado, origen').eq('user_id', miId),
       sb.from('lista_espera').select('nivel_id, creado_en').eq('user_id', miId),
-      // Niveles donde fui recibidor y recibí mis 4 tareas (habilitan el nivel siguiente)
+      // Historial de niveles completados (un nivel puede aparecer varias veces si se repitió)
       sb.from('ciclos_completados').select('nivel_id, completado_en').eq('user_id', miId)
     ]);
     if (p.error) throw p.error;
     if (e.error) throw e.error;
     if (c.error) throw c.error;
-    const una = (x) => Object.assign({ vuelta: 1 }, x);
-    return { conVueltas: false, vueltaActual: 1, referidos: null, posiciones: p.data.map(una), espera: e.data.map(una), ciclos: c.data.map(una), puede: null };
+    return { posiciones: p.data, espera: e.data, ciclos: c.data };
   }
 
-  // "Nivel 2 (Preparar) - vuelta 1"
-  function etiquetaNivel(nivel, vuelta) {
-    return 'Nivel ' + nivel.orden + ' (' + nivel.nombre + ') - vuelta ' + (vuelta || 1);
+  // "Nivel 2 (Preparar)"
+  function etiquetaNivel(nivel) {
+    return 'Nivel ' + nivel.orden + ' (' + nivel.nombre + ')';
   }
-  function enlaceGrupo(nivelId, vuelta) {
-    return '#mi-grupo?nivel=' + nivelId + (vuelta ? '&vuelta=' + vuelta : '');
+  function enlaceGrupo(nivelId) {
+    return '#mi-grupo?nivel=' + nivelId;
   }
 
   // ---------- Perfil y enlace de invitación ----------
@@ -130,7 +108,7 @@
   function cargarSeccion(id, params) {
     if (id === 'inicio') cargarInicio();
     if (id === 'niveles') cargarNiveles();
-    if (id === 'mi-grupo') cargarMiGrupo(params.get('nivel'), params.get('vuelta'));
+    if (id === 'mi-grupo') cargarMiGrupo(params.get('nivel'));
     if (id === 'notificaciones') cargarNotificaciones();
   }
 
@@ -225,17 +203,11 @@
     refrescar();
   }
 
-  // vuelta: en la que voy a entrar (con el SQL 18); vueltaNueva: true si empieza una vuelta nueva
-  async function participar(nivel, vuelta, vueltaNueva) {
+  async function participar(nivel) {
     const primero = !nivelAnterior(nivelesCache || [nivel], nivel); // primer nivel por orden
     const si = await confirmar({
-      titulo: vueltaNueva ? 'Empezar la vuelta ' + vuelta : 'Confirmar participación',
-      texto: vueltaNueva
-        ? [
-            el('p', { class: 'modal-p' }, '¿Quieres volver al nivel ', el('b', { text: nivel.nombre }), ' y empezar tu ', el('b', { text: 'vuelta ' + vuelta }), '? Ocuparás una posición de regalador y tus otros niveles siguen igual.'),
-            el('div', { class: 'modal-nota', text: 'En esta vuelta tu enlace de invitación vuelve a tener lugar para 2 personas nuevas, que te seguirán en los niveles de esta vuelta. No se pide ni se recibe dinero.' })
-          ]
-        : primero
+      titulo: 'Confirmar participación',
+      texto: primero
         ? [
             el('p', { class: 'modal-p' }, '¿Seguro que quieres participar en este nivel? Ocuparás una posición de ', el('b', { text: 'regalador' }), ' y asumirás el compromiso de regalar tus tareas.'),
             el('div', { class: 'modal-nota', text: 'Regalar es hacer tus tareas en redes sociales. No se pide ni se recibe dinero. Esta acción se puede deshacer, pero te lo avisamos para que estés seguro.' })
@@ -244,12 +216,11 @@
             el('p', { class: 'modal-p' }, '¿Seguro que quieres participar en el nivel ', el('b', { text: nivel.nombre }), '? Entrarás al grupo de quien te invitó en este nivel, en el lugar que te corresponda.'),
             el('div', { class: 'modal-nota', text: 'Si entras como regalador tendrás que hacer tu tarea; si entras como constructor tendrás que invitar a 2 personas. No se pide ni se recibe dinero.' })
           ],
-      boton: vueltaNueva ? 'Sí, empezar la vuelta ' + vuelta : 'Sí, participar'
+      boton: 'Sí, participar'
     });
     if (!si) return;
     const { data, error } = await sb.rpc('participar', { p_nivel_id: nivel.id });
     if (error) return aviso(traducirErrorDatos(error));
-    const textoVuelta = data && data.vuelta ? ' (vuelta ' + data.vuelta + ')' : '';
     if (data && data.resultado === 'colocado') {
       const pos = data.posicion || '';
       const siguiente = pos === 'recibidor'
@@ -258,13 +229,48 @@
           ? 'Tu reloj para invitar a 2 personas ya empezó.'
           : 'Tu reloj ya empezó: haz tu tarea y márcala como hecha.';
       const derrame = data.derrame ? ' Como quien te invitó no tiene lugar en este nivel, entraste en el primer lugar libre.' : '';
-      aviso('¡Listo! Ocupas el lugar de ' + (NOMBRE_POSICION[pos] || 'regalador') + ' en el nivel ' + data.nivel + textoVuelta + '. ' + siguiente + derrame, 'ok');
-      location.hash = enlaceGrupo(data.nivel_id, data.vuelta);
+      aviso('¡Listo! Ocupas el lugar de ' + (NOMBRE_POSICION[pos] || 'regalador') + ' en el nivel ' + data.nivel + '. ' + siguiente + derrame, 'ok');
+      location.hash = enlaceGrupo(data.nivel_id);
     } else {
-      aviso('No hay un lugar libre para ti en este momento. Quedaste en la lista de espera del nivel ' + ((data && data.nivel) || nivel.nombre) + textoVuelta + '; el administrador te asignará un lugar.', 'info');
+      aviso('No hay un lugar libre para ti en este momento. Quedaste en la lista de espera del nivel ' + ((data && data.nivel) || nivel.nombre) + '; el administrador te asignará un lugar.', 'info');
       refrescar();
     }
-    if (data && data.nueva_vuelta) actualizarReferidos();
+    actualizarBadge();
+  }
+
+  // ---------- Repetir un nivel con mi equipo (SQL 25) ----------
+  // Se arma un grupo nuevo en ese nivel: yo al centro, mis 2 referidos como constructores y los
+  // 2 referidos de cada uno como regaladores (los mismos 7 de siempre).
+  async function repetirConEquipo(nivel) {
+    const { data: equipo, error: errE } = await sb.rpc('mi_equipo', { p_nivel_id: nivel.id });
+    if (errE) return aviso(traducirErrorDatos(errE));
+    const lista = el('ul', { class: 'equipo-lista' },
+      el('li', null, el('b', { text: 'Tú' }), el('span', { class: 'mut', text: ' · Recibidor (centro)' })));
+    (equipo || []).forEach((s) => {
+      const libre = !s.user_id ? 'falta: queda libre' : s.ocupado ? 'ya está en este nivel: queda libre' : null;
+      lista.appendChild(el('li', { class: libre ? 'equipo-libre' : null },
+        el('b', { text: s.nombre_usuario || 'Lugar libre' }),
+        el('span', { class: 'mut', text: ' · ' + NOMBRE_POSICION[s.posicion] + (libre ? ' (' + libre + ')' : '') })));
+    });
+    const libres = (equipo || []).filter((s) => !s.user_id || s.ocupado).length;
+    const si = await confirmar({
+      titulo: 'Repetir el nivel ' + nivel.nombre + ' con tu equipo',
+      texto: [
+        el('p', { class: 'modal-p' }, 'Se arma otra vez tu grupo en el nivel ', el('b', { text: nivel.nombre }), ' y todos entran automáticamente:'),
+        lista,
+        el('div', { class: 'modal-nota', text: 'Cada regalador recibe un mensaje y empieza su plazo para hacer la tarea.' +
+          (libres ? ' Los lugares libres los puede tomar la lista de espera de su patrocinador; si nadie los toma, quedan para el derrame.' : '') +
+          ' No se pide ni se recibe dinero.' })
+      ],
+      boton: 'Sí, repetir con mi equipo'
+    });
+    if (!si) return;
+    const { data, error } = await sb.rpc('repetir_nivel', { p_nivel_id: nivel.id });
+    if (error) return aviso(traducirErrorDatos(error));
+    const vac = (data.vacios || []).length;
+    aviso('¡Listo! Repetiste el nivel ' + data.nivel + ': tú estás al centro y entraron ' + (data.colocados || []).length + ' de tu equipo' +
+      (vac ? '. Quedaron ' + vac + ' lugares libres.' : '.'), 'ok');
+    location.hash = enlaceGrupo(data.nivel_id);
     actualizarBadge();
   }
 
@@ -286,7 +292,7 @@
       el('span', { class: 'pill pill-amarilla', text: enEspera ? 'Pendiente de posición' : 'Sin lugar con tu patrocinador' }),
       el('h3', { text: enEspera ? 'Eres el ' + mr.numero + ' en espera' : 'Ya no eres referido activo' }),
       el('p', { class: 'mut', text: enEspera
-        ? 'Estás en la lista de espera de ' + mr.patrocinador + ' (su vuelta ' + mr.vuelta + '). Cuando se libere uno de sus 2 lugares, ' + mr.patrocinador + ' elige quién lo toma; si no elige en 24 horas, entra automáticamente el 1.º en espera. Tu patrocinador también puede ubicarte en derrame o debajo de alguien de su red. Al entrar empieza tu plazo de ' + mr.plazo_tarea + ' para hacer tu tarea.'
+        ? 'Estás en la lista de espera de ' + mr.patrocinador + '. Cuando se libere uno de sus 2 lugares, ' + mr.patrocinador + ' elige quién lo toma; si no elige en ' + (mr.plazo_elegir || '24 h') + ', entra automáticamente el 1.º en espera. Tu patrocinador también puede ubicarte en derrame o debajo de alguien de su red. Al entrar empieza tu plazo de ' + mr.plazo_tarea + ' para hacer tu tarea.'
         : mr.patrocinador + ' te quitó de sus 2 referidos. Puedes seguir participando: entra en el primer lugar libre.' }),
       enEspera ? el('p', { class: 'mut', text: 'Si no quieres esperar, entra ahora en el primer lugar libre del primer nivel:' }) : null,
       el('div', { class: 'botones' },
@@ -310,7 +316,7 @@
     if (error) return aviso(traducirErrorDatos(error));
     if (data && data.resultado === 'colocado') {
       aviso('¡Listo! Entraste como ' + (NOMBRE_POSICION[data.posicion] || 'regalador') + ' en el nivel ' + data.nivel + '. Tu reloj ya empezó: haz tu tarea y márcala como hecha.', 'ok');
-      location.hash = enlaceGrupo(data.nivel_id, data.vuelta);
+      location.hash = enlaceGrupo(data.nivel_id);
     } else {
       aviso('No hay ningún lugar libre en este momento. Quedaste en la lista de espera del nivel ' + ((data && data.nivel) || primero.nombre) + '.', 'info');
       refrescar();
@@ -318,24 +324,24 @@
     actualizarBadge();
   }
 
-  async function eliminarReferido(a, vuelta) {
+  async function eliminarReferido(a) {
     const si = await confirmar({
       titulo: 'Eliminar referido',
       texto: [
-        el('p', { class: 'modal-p' }, '¿Quieres quitar a ', el('b', { text: a.nombre_usuario }), ' de tus referidos de la vuelta ' + vuelta + '?'),
-        el('div', { class: 'modal-nota', text: 'Se libera su lugar y el 1.º en espera lo toma automáticamente. ' + a.nombre_usuario + ' podrá seguir participando por derrame.' })
+        el('p', { class: 'modal-p' }, '¿Quieres quitar a ', el('b', { text: a.nombre_usuario }), ' de tus referidos?'),
+        el('div', { class: 'modal-nota', text: 'Se libera su lugar y eliges quién de tu lista de espera lo toma (si no eliges en 24 horas, entra el 1.º en espera). ' + a.nombre_usuario + ' podrá seguir participando por derrame.' })
       ],
       boton: 'Sí, eliminar'
     });
     if (!si) return;
-    const { error } = await sb.rpc('eliminar_referido', { p_user_id: a.user_id, p_vuelta: vuelta });
+    const { error } = await sb.rpc('eliminar_referido', { p_user_id: a.user_id });
     if (error) return aviso(traducirErrorDatos(error));
-    aviso(a.nombre_usuario + ' ya no es tu referido. Si había alguien en espera, ya tomó su lugar.', 'ok');
+    aviso(a.nombre_usuario + ' ya no es tu referido. Si tienes gente en espera, elige quién toma su lugar.', 'ok');
     refrescar();
     actualizarReferidos();
   }
 
-  // Tarjeta "Mis referidos - vuelta N": los 2 activos (con Eliminar) y la lista de espera en orden
+  // Tarjeta "Mis referidos": los 2 activos (con Eliminar), los lugares libres y la lista de espera en orden
   function tarjetaReferidos(v) {
     const lista = el('ul', { class: 'ref-lista' });
     v.activos.forEach((a) => {
@@ -343,11 +349,11 @@
       lista.appendChild(el('li', { class: 'ref-item' },
         el('div', { class: 'ref-quien' },
           el('b', { text: a.nombre_usuario }),
-          el('span', { class: 'mut', text: pos + (a.tipo === 'socio' ? ' · volvió contigo' : '') })),
+          el('span', { class: 'mut', text: pos })),
         // Solo se puede eliminar a quien todavía es regalador o no tiene posición
         a.posicion && !String(a.posicion.posicion).startsWith('regalador')
           ? el('span', { class: 'pill pill-gris', text: 'Ya avanzó' })
-          : el('button', { type: 'button', class: 'bt-salir btn-chico', onclick: () => eliminarReferido(a, v.vuelta), text: 'Eliminar' })
+          : el('button', { type: 'button', class: 'bt-salir btn-chico', onclick: () => eliminarReferido(a), text: 'Eliminar' })
       ));
     });
     // (24) Lugares libres: si hay gente en espera, eliges quién lo toma (si no, entra el 1.º)
@@ -372,7 +378,7 @@
         el('button', { type: 'button', class: 'bo btn-chico', onclick: () => ubicarDebajoDe(e), text: 'Ubicar debajo de…' })
       ))));
     return el('section', { class: 'card ref-card' },
-      el('h3', { text: 'Mis referidos - vuelta ' + v.vuelta }),
+      el('h3', { text: 'Mis referidos' }),
       lista,
       el('h4', { class: 'ref-sub', text: 'En espera' + (v.espera.length ? ' (' + v.espera.length + ')' : '') }),
       v.espera.length ? espera : el('p', { class: 'mut', text: 'Nadie en espera.' }),
@@ -451,8 +457,8 @@
     if (enEsperaOEliminado(mr)) cr.appendChild(tarjetaReserva(mr));
     const cf = $('inicio-referidos');
     vaciar(cf);
-    if (rDet.error || !Array.isArray(rDet.data)) return; // sin el SQL 23
-    rDet.data.slice().sort((a, b) => b.vuelta - a.vuelta).forEach((v) => cf.appendChild(tarjetaReferidos(v)));
+    if (rDet.error || !rDet.data || !Array.isArray(rDet.data.activos)) return; // sin el SQL 25
+    cf.appendChild(tarjetaReferidos(rDet.data));
   }
 
   // ---------- Tarjeta del recibidor: aprobación de tareas ----------
@@ -519,7 +525,7 @@
       el('div', { class: 'aprob-cab' },
         el('div', null,
           el('h3', { text: 'Pendiente de aprobación de tareas recibidas' }),
-          el('div', { class: 'mut', text: (op && op.vuelta ? etiquetaNivel(nivel, op.vuelta) : 'Nivel ' + nivel.nombre) + ' · Tus 4 regaladores' })
+          el('div', { class: 'mut', text: 'Nivel ' + nivel.nombre + ' · Tus 4 regaladores' })
         ),
         el('span', { class: 'contador', text: aprobadas + '/4 aprobadas' })
       ),
@@ -527,7 +533,7 @@
         ? el('div', { class: 'alerta-roja', role: 'alert', text: pendientes === 1 ? 'Tienes 1 tarea por aprobar.' : 'Tienes ' + pendientes + ' tareas por aprobar.' })
         : null,
       lista,
-      op && op.enlaceGrupo ? el('a', { class: 'link', href: enlaceGrupo(nivel.id, op.vuelta), text: 'Ver el mapa de mi grupo' }) : null
+      op && op.enlaceGrupo ? el('a', { class: 'link', href: enlaceGrupo(nivel.id), text: 'Ver el mapa de mi grupo' }) : null
     );
   }
 
@@ -548,7 +554,7 @@
       const grupos = await Promise.all(recibidor.map(async (p) => {
         const { data, error } = await sb.rpc('posiciones_de_grupo', { p_grupo_id: p.grupo_id });
         if (error) throw error;
-        return { nivel: nivelPorId(niveles, p.nivel_id), vuelta: datos.conVueltas ? p.vuelta : null, posiciones: data, whatsapps: await whatsappsRegaladores(data) };
+        return { nivel: nivelPorId(niveles, p.nivel_id), posiciones: data, whatsapps: await whatsappsRegaladores(data) };
       }));
       if (recibidor.length) await perfilListo; // mi usuario va en el mensaje de WhatsApp
       if (turno !== turnoInicio) return;
@@ -565,32 +571,32 @@
 
       const ca = $('inicio-recibidor');
       vaciar(ca);
-      grupos.forEach((g) => ca.appendChild(tarjetaAprobacion(g.posiciones, g.nivel, { enlaceGrupo: true, vuelta: g.vuelta }, g.whatsapps)));
+      grupos.forEach((g) => ca.appendChild(tarjetaAprobacion(g.posiciones, g.nivel, { enlaceGrupo: true }, g.whatsapps)));
 
-      // Mis niveles activos, cada uno con su vuelta: "Nivel 2 (Preparar) - vuelta 1"
+      // Mis niveles activos (una posición por nivel): "Nivel 2 (Preparar)"
       const cn = $('inicio-niveles');
       vaciar(cn);
-      if (datos.conVueltas && (mias.length || datos.espera.length)) {
-        const filas = mias.map((p) => ({ nivel: nivelPorId(niveles, p.nivel_id), vuelta: p.vuelta, p }))
-          .concat(datos.espera.map((e) => ({ nivel: nivelPorId(niveles, e.nivel_id), vuelta: e.vuelta, espera: true })))
-          .sort((a, b) => (a.vuelta - b.vuelta) || (a.nivel.orden - b.nivel.orden));
+      if (mias.length > 1 || (mias.length && datos.espera.length)) {
+        const filas = mias.map((p) => ({ nivel: nivelPorId(niveles, p.nivel_id), p }))
+          .concat(datos.espera.map((e) => ({ nivel: nivelPorId(niveles, e.nivel_id), espera: true })))
+          .sort((a, b) => a.nivel.orden - b.nivel.orden);
         const lista = el('ul', { class: 'mis-niveles' });
         filas.forEach((f) => {
           lista.appendChild(el('li', { class: 'mis-niveles-item' },
             el('span', { class: 'nivel-punto', style: 'background:' + colorNivel(f.nivel), 'aria-hidden': 'true' }),
             el('div', { class: 'mis-niveles-texto' },
-              el('b', { text: etiquetaNivel(f.nivel, f.vuelta) }),
+              el('b', { text: etiquetaNivel(f.nivel) }),
               el('span', { class: 'mut', text: f.espera ? 'En lista de espera' : NOMBRE_POSICION[f.p.posicion] })
             ),
-            f.espera ? null : el('a', { class: 'bo btn-chico', href: enlaceGrupo(f.p.nivel_id, f.p.vuelta), text: 'Ver grupo' })
+            f.espera ? null : el('a', { class: 'bo btn-chico', href: enlaceGrupo(f.p.nivel_id), text: 'Ver grupo' })
           ));
         });
         cn.appendChild(el('section', { class: 'card' },
           el('h3', { text: 'Mis niveles' }),
-          el('div', { class: 'mut', text: 'Estás en la vuelta ' + datos.vueltaActual + '. Cada vez que vuelves al primer nivel empieza una vuelta nueva.' }),
+          el('div', { class: 'mut', text: 'Tienes una posición activa por nivel. Desde Niveles puedes repetir niveles inferiores con tu equipo.' }),
           lista));
       }
-      // Reserva de referidos (SQL 23): "Eres el N en espera" y "Mis referidos - vuelta N"
+      // Reserva de referidos: "Eres el N en espera" y "Mis referidos"
       cargarReferidosYReserva().catch(() => {});
     } catch (err) {
       if (turno !== turnoInicio) return;
@@ -633,8 +639,11 @@
     const lista = $('niveles-lista');
     const cajaAviso = $('niveles-aviso');
     try {
-      const [niveles, datos, mr] = await Promise.all([leerNiveles(), leerMisDatos(), leerMiReserva()]);
+      const [niveles, datos, mr, rRep] = await Promise.all([leerNiveles(), leerMisDatos(), leerMiReserva(), sb.rpc('niveles_para_repetir')]);
       if (turno !== turnoNiveles) return;
+      // (25) Niveles inferiores al más alto que alcancé, sin posición mía: "Repetir con mi equipo"
+      const repetibles = new Set((rRep.data && rRep.data.niveles) || []);
+      const esperaRepetir = rRep.data && rRep.data.espera_hasta;
       const mias = datos.posiciones;
       const espera = datos.espera;
       const ciclos = datos.ciclos;
@@ -650,42 +659,36 @@
       }
 
       const completados = new Set(ciclos.map((c) => c.nivel_id));
-      // Sin el SQL 18 (modo anterior): habilitado = el primer nivel o el siguiente a uno completado
-      const habilitadoAntes = (n) => {
+      // Habilitado: el primer nivel o el siguiente a uno completado (igual que nivel_habilitado())
+      const habilitado = (n) => {
         const ant = nivelAnterior(niveles, n);
         return !ant || completados.has(ant.id);
       };
-      const conV = datos.conVueltas;
-      const txtV = (v) => (conV ? ' · vuelta ' + v : '');
 
       vaciar(lista);
       niveles.forEach((n) => {
         const botones = [];
-        const aqui = mias.filter((p) => p.nivel_id === n.id).sort((a, b) => a.vuelta - b.vuelta);
-        const esperaAqui = espera.filter((e) => e.nivel_id === n.id).sort((a, b) => a.vuelta - b.vuelta);
-        const vueltasHechas = [...new Set(ciclos.filter((c) => c.nivel_id === n.id).map((c) => c.vuelta))].sort((a, b) => a - b);
+        const aqui = mias.find((p) => p.nivel_id === n.id);
+        const esperaAqui = espera.some((e) => e.nivel_id === n.id);
+        const vecesHecho = ciclos.filter((c) => c.nivel_id === n.id).length;
 
-        aqui.forEach((p) => botones.push(el('a', { class: 'btn btn-nivel', href: enlaceGrupo(n.id, conV ? p.vuelta : null), text: 'Ver mi grupo' + txtV(p.vuelta) })));
-        esperaAqui.forEach((e) => botones.push(el('button', { type: 'button', class: 'btn-bloqueado', disabled: true, text: '⏳ En lista de espera' + txtV(e.vuelta) })));
-
-        // ¿Puedo tocar Participar? Con vueltas lo decide la base (mis_vueltas); sin vueltas, como antes
-        let vueltaEntrar = null;
-        if (conV) vueltaEntrar = datos.puede[n.id] || null;
-        else if (!aqui.length && !esperaAqui.length && !completados.has(n.id) && habilitadoAntes(n)) vueltaEntrar = 1;
-        if (vueltaEntrar) {
-          const nueva = conV && vueltaEntrar > datos.vueltaActual;
-          const texto = nueva ? 'Empezar vuelta ' + vueltaEntrar
-            : (vueltasHechas.length || aqui.length ? 'Participar de nuevo' : 'Participar') + txtV(vueltaEntrar);
-          if (porDerrame && !nivelAnterior(niveles, n)) {
-            botones.push(el('button', { type: 'button', class: 'btn btn-nivel', onclick: entrarPorDerrame, text: 'Entrar por derrame' }));
-          } else {
-            botones.push(el('button', { type: 'button', class: 'btn btn-nivel', onclick: () => participar(n, vueltaEntrar, nueva), text: texto }));
-          }
+        if (aqui) {
+          botones.push(el('a', { class: 'btn btn-nivel', href: enlaceGrupo(n.id), text: 'Ver mi grupo' }));
+        } else if (esperaAqui) {
+          botones.push(el('button', { type: 'button', class: 'btn-bloqueado', disabled: true, text: '⏳ En lista de espera' }));
+        } else if (repetibles.has(n.id)) {
+          botones.push(esperaRepetir
+            ? el('button', { type: 'button', class: 'btn-bloqueado', disabled: true, text: '⏳ Repetir desde el ' + fechaHora(esperaRepetir) })
+            : el('button', { type: 'button', class: 'btn btn-nivel', onclick: () => repetirConEquipo(n), text: 'Repetir con mi equipo' }));
+        } else if (!completados.has(n.id) && habilitado(n)) {
+          botones.push(porDerrame && !nivelAnterior(niveles, n)
+            ? el('button', { type: 'button', class: 'btn btn-nivel', onclick: entrarPorDerrame, text: 'Entrar por derrame' })
+            : el('button', { type: 'button', class: 'btn btn-nivel', onclick: () => participar(n), text: 'Participar' }));
         }
 
-        const activo = botones.length > 0 || vueltasHechas.length > 0;
-        const textoHecho = '✅ Completado' + (conV && vueltasHechas.length ? ' (vuelta ' + vueltasHechas.join(', ') + ')' : '');
-        const soloHecho = !botones.length && vueltasHechas.length > 0;
+        const activo = botones.length > 0 || vecesHecho > 0;
+        const textoHecho = '✅ Completado' + (vecesHecho > 1 ? ' (' + vecesHecho + ' veces)' : '');
+        const soloHecho = !botones.length && vecesHecho > 0;
         if (!botones.length) {
           botones.push(el('button', { type: 'button', class: 'btn-bloqueado', disabled: true,
             text: soloHecho ? textoHecho : '🔒 Bloqueado' }));
@@ -694,7 +697,7 @@
           el('div', { class: 'nivel-circulo', style: 'background:' + colorNivel(n), 'aria-hidden': 'true', text: n.nombre.charAt(0) }),
           el('div', { class: 'nivel-nombre', text: n.nombre }),
           el('div', { class: 'mut', text: 'Meta: ' + formatoNumero(n.meta_tareas) + ' tareas' }),
-          vueltasHechas.length && !soloHecho ? el('div', { class: 'nivel-hecho', text: textoHecho }) : null,
+          vecesHecho && !soloHecho ? el('div', { class: 'nivel-hecho', text: textoHecho }) : null,
           el('div', { class: 'nivel-botones' }, ...botones)
         ));
       });
@@ -761,14 +764,13 @@
   }
 
   let turnoGrupo = 0;
-  async function cargarMiGrupo(nivelPedido, vueltaPedida) {
+  async function cargarMiGrupo(nivelPedido) {
     const turno = ++turnoGrupo;
     const cont = $('grupo-contenido');
     try {
       const [niveles, datos] = await Promise.all([leerNiveles(), leerMisDatos()]);
       if (turno !== turnoGrupo) return;
       const mias = datos.posiciones.slice();
-      const conV = datos.conVueltas;
 
       if (!mias.length) {
         ponerReloj('grupo', null);
@@ -777,18 +779,15 @@
         return;
       }
 
-      mias.sort((a, b) => (nivelPorId(niveles, a.nivel_id).orden - nivelPorId(niveles, b.nivel_id).orden) || (a.vuelta - b.vuelta));
-      // Grupo a mostrar: el del nivel (y vuelta) pedido o, si no, el del nivel más alto
-      const delNivel = mias.filter((p) => String(p.nivel_id) === String(nivelPedido));
-      const mia = delNivel.find((p) => String(p.vuelta) === String(vueltaPedida)) || delNivel[delNivel.length - 1] || mias[mias.length - 1];
+      mias.sort((a, b) => nivelPorId(niveles, a.nivel_id).orden - nivelPorId(niveles, b.nivel_id).orden);
+      // Grupo a mostrar: el del nivel pedido o, si no, el del nivel más alto
+      const mia = mias.find((p) => String(p.nivel_id) === String(nivelPedido)) || mias[mias.length - 1];
       const nivel = nivelPorId(niveles, mia.nivel_id);
-      const titulo = conV ? etiquetaNivel(nivel, mia.vuelta) : 'Nivel ' + nivel.nombre;
 
       const [rGrupo, rPos, rReloj] = await Promise.all([
-        sb.from('grupos').select('id, estado').eq('id', mia.grupo_id).maybeSingle(),
+        sb.from('grupos').select('id, estado, tipo').eq('id', mia.grupo_id).maybeSingle(),
         sb.rpc('posiciones_de_grupo', { p_grupo_id: mia.grupo_id }),
-        mia.posicion === 'recibidor' ? Promise.resolve({ data: null })
-          : sb.rpc('mi_reloj', conV ? { p_nivel_id: mia.nivel_id, p_vuelta: mia.vuelta } : { p_nivel_id: mia.nivel_id })
+        mia.posicion === 'recibidor' ? Promise.resolve({ data: null }) : sb.rpc('mi_reloj', { p_nivel_id: mia.nivel_id })
       ]);
       if (rGrupo.error) throw rGrupo.error;
       if (rPos.error) throw rPos.error;
@@ -817,18 +816,22 @@
         mias.forEach((p) => {
           chips.appendChild(el('a', {
             class: 'chip' + (p === mia ? ' on' : ''),
-            href: enlaceGrupo(p.nivel_id, conV ? p.vuelta : null),
+            href: enlaceGrupo(p.nivel_id),
             'aria-current': p === mia ? 'page' : null,
-            text: conV ? etiquetaNivel(nivelPorId(niveles, p.nivel_id), p.vuelta) : nivelPorId(niveles, p.nivel_id).nombre
+            text: etiquetaNivel(nivelPorId(niveles, p.nivel_id))
           }));
         });
         cont.appendChild(chips);
       }
 
       const estado = rGrupo.data && rGrupo.data.estado === 'completado' ? 'completado' : 'activo';
+      const repetido = rGrupo.data && rGrupo.data.tipo === 'repetido';
       cont.appendChild(el('section', { class: 'card grupo-cabecera' },
         el('div', null,
-          el('div', { class: 'grupo-titulo', text: 'Grupo · ' + titulo }),
+          el('div', { class: 'grupo-titulo', text: 'Grupo · ' + etiquetaNivel(nivel) }),
+          repetido
+            ? el('div', { class: 'grupo-repetido', text: 'Grupo repetido: el equipo de ' + ((recibidor && recibidor.nombre_usuario) || 'su recibidor') + ' vuelve a jugar este nivel.' })
+            : null,
           el('div', { class: 'mut', text: 'El recibidor está al centro, los constructores a los lados y los regaladores en las puntas.' })
         ),
         el('span', { class: 'estado-chip ' + estado, text: 'Estado: ' + estado })
@@ -844,7 +847,7 @@
       }));
 
       if (mia.posicion === 'recibidor') {
-        cont.appendChild(tarjetaAprobacion(posiciones, nivel, conV ? { vuelta: mia.vuelta } : null, whatsappsRegs));
+        cont.appendChild(tarjetaAprobacion(posiciones, nivel, null, whatsappsRegs));
       } else {
         if (esRegalador(mia.posicion)) {
           cont.appendChild(avisoRegalador(recibidor, whatsappRecibidor));
@@ -979,23 +982,20 @@
   // =====================================================================
   // "Referidos: X de 2" junto al enlace (máximo 2 referidos activos por patrocinador)
   async function actualizarReferidos() {
-    const [{ data, error }, datos, r23] = await Promise.all([sb.rpc('mis_referidos'), leerMisDatos().catch(() => null), sb.rpc('mi_reserva')]);
+    const [{ data, error }, r23] = await Promise.all([sb.rpc('mis_referidos'), sb.rpc('mi_reserva')]);
     if (error || typeof data !== 'number') return; // sin el SQL 10 no se muestra
-    const conV = datos && datos.conVueltas;
-    const conReserva = !r23.error; // (23) el enlace ya no se bloquea: los demás quedan en espera
+    const conReserva = !r23.error; // el enlace ya no se bloquea: los demás quedan en espera
     const n = Math.min(data, 2);
     const caja = $('referidos');
     vaciar(caja);
     const circ = el('span', { class: 'circulos', 'aria-hidden': 'true' },
       el('span', { class: 'circulo' + (n >= 1 ? ' lleno' : '') }),
       el('span', { class: 'circulo' + (n >= 2 ? ' lleno' : '') }));
-    // Con vueltas, el enlace admite 2 personas nuevas en cada vuelta
-    caja.append(el('span', { text: (conReserva ? 'Referidos activos' : 'Referidos') + (conV ? ' de tu vuelta ' + datos.vueltaActual : '') + ': ' + data + ' de 2' }), circ);
+    // Quien tenía más de 2 activos antes del cambio (vueltas) los conserva todos
+    caja.append(el('span', { text: (conReserva ? 'Referidos activos' : 'Referidos') + ': ' + (data > 2 ? data : data + ' de 2') }), circ);
     caja.hidden = false;
     const avisoLleno = $('referidos-aviso');
-    avisoLleno.textContent = conV
-      ? 'Ya tienes tus 2 referidos de la vuelta ' + datos.vueltaActual + '. Cuando completes el primer nivel y vuelvas a entrar, empezará una vuelta nueva y tu enlace tendrá 2 lugares más.'
-      : 'Tu link está inhabilitado porque ya tienes 2 referidos';
+    avisoLleno.textContent = 'Tu link está inhabilitado porque ya tienes 2 referidos';
     avisoLleno.hidden = conReserva || data < 2;
   }
 

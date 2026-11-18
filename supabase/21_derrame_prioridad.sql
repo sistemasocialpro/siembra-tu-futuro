@@ -1,3 +1,5 @@
+-- !! OBSOLETO desde 25_repetir_nivel.sql: NO volver a ejecutar este archivo (crea las vueltas que el 25 quita).
+--    Se deja solo como historial. Su contenido vigente (sin vueltas) está en el 25.
 -- =====================================================================
 -- Sistema Siembra tu Futuro — 21_derrame_prioridad.sql
 -- Ejecutar DESPUÉS de 20_rendimiento.sql. Se puede volver a ejecutar sin problema.
