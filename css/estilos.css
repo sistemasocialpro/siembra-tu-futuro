@@ -160,6 +160,49 @@ button, input { font-family: inherit; }
   .fila-2 { grid-template-columns: 1fr; }
 }
 
+/* Frase corta del encabezado: solo en celular */
+.hero-corta { display: none; }
+
+/* ---------- Acceso en celular (menos de 768px): Iniciar sesión y Registrarse ----------
+   Encabezado verde bajo con esquinas redondeadas; la tarjeta se monta 64px sobre el verde.
+   En computadora (768px o más) no cambia nada. */
+@media (max-width: 767.98px) {
+  .acceso { flex-direction: column; }
+  .acceso-hero {
+    flex: none; padding: 40px 16px 90px; gap: 8px; text-align: center; align-items: center;
+    border-radius: 0 0 28px 28px;
+  }
+  .acceso-hero .logo { width: 56px; height: 56px; }
+  .acceso-hero h1 { font-size: 28px; }
+  .acceso-hero .hero-lema, .acceso-hero .hero-sub, .acceso-hero .redes { display: none; }
+  .hero-corta { display: block; margin: 0; font-size: 15px; color: #d9f5e3; }
+
+  .acceso-panel {
+    flex: none; flex-direction: column; align-items: stretch; justify-content: flex-start;
+    padding: 0 16px 28px; background: transparent;
+  }
+  .acceso-card, .acceso-card.ancha {
+    max-width: none; width: 100%; margin: -64px 0 0; padding: 20px 18px 24px;
+    border-radius: 24px; box-shadow: 0 10px 30px rgba(20, 83, 45, .14);
+    position: relative;
+  }
+  .acceso-card h2 { font-size: 24px; }
+  .acceso-card .tabs { margin-bottom: 18px; }
+  .acceso-card .tab { min-height: 44px; }
+
+  /* Campos de 50px y botones de 52px a todo el ancho */
+  .acceso-card .in { height: 50px; padding: 0 14px; }
+  .acceso-card .in-clave .in { padding-right: 52px; }
+  .acceso-card .btn-grande { width: 100%; min-height: 52px; padding: 0 16px; font-size: 17px; }
+  .acceso-card a.btn-grande { display: flex; align-items: center; justify-content: center; }
+  .acceso-card .fila-2 { grid-template-columns: 1fr; }
+  /* El asterisco va en la misma línea que el nombre del campo */
+  .acceso-card .campo > .lb { display: block; }
+
+  /* "Reglas y políticas" debajo de la tarjeta, centrado */
+  .acceso-panel .pie-acceso { width: 100%; margin: 18px 0 0; text-align: center; }
+}
+
 /* ---------- Panel (panel.html) ---------- */
 body.cargando .app { visibility: hidden; }
 
