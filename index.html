@@ -36,12 +36,14 @@
       <form id="form-login" role="tabpanel" aria-labelledby="tab-login" novalidate>
         <h2>¡Bienvenido de nuevo!</h2>
         <p class="mut">Inicia sesión para continuar a tu panel.</p>
-        <label class="lb">Correo
-          <input class="in" id="login-id" type="email" autocomplete="email" autocapitalize="none" spellcheck="false" required>
+        <label class="lb">Usuario
+          <input class="in" id="login-id" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="254" required>
         </label>
-        <label class="lb">Contraseña
+        <label class="lb" for="login-pass">Contraseña</label>
+        <div class="in-clave">
           <input class="in" id="login-pass" type="password" autocomplete="current-password" required>
-        </label>
+          <button type="button" class="ojo" data-ojo="login-pass" aria-label="Mostrar contraseña" aria-pressed="false"></button>
+        </div>
         <div class="fila-entre">
           <label class="check"><input type="checkbox" id="login-recordar" checked> Recordarme</label>
           <a href="#" id="olvide" class="link">¿Olvidaste tu clave?</a>
@@ -90,14 +92,14 @@
 
         <div class="fila-2">
           <div class="campo">
-            <label class="lb" for="reg-nombre">Nombre completo <span class="req" aria-hidden="true">*</span></label>
+            <label class="lb" for="reg-nombre">Nombre y apellido <span class="req" aria-hidden="true">*</span></label>
             <input class="in" id="reg-nombre" type="text" autocomplete="name" maxlength="80" required aria-describedby="err-reg-nombre">
             <span class="err" id="err-reg-nombre" aria-live="polite"></span>
           </div>
           <div class="campo">
-            <label class="lb" for="reg-usuario">Nombre de usuario <span class="req" aria-hidden="true">*</span></label>
+            <label class="lb" for="reg-usuario">Usuario (para entrar) <span class="req" aria-hidden="true">*</span></label>
             <input class="in" id="reg-usuario" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="20" required aria-describedby="ayuda-reg-usuario err-reg-usuario">
-            <span class="ayuda" id="ayuda-reg-usuario">3 a 20: minúsculas, números o _</span>
+            <span class="ayuda" id="ayuda-reg-usuario" aria-live="polite">3 a 20: minúsculas, números o _</span>
             <span class="err" id="err-reg-usuario" aria-live="polite"></span>
           </div>
         </div>
@@ -109,7 +111,7 @@
         </div>
 
         <div class="campo">
-          <label class="lb" for="reg-whatsapp">WhatsApp <span class="req" aria-hidden="true">*</span></label>
+          <label class="lb" for="reg-whatsapp">Teléfono / WhatsApp <span class="req" aria-hidden="true">*</span></label>
           <input class="in" id="reg-whatsapp" type="tel" inputmode="tel" autocomplete="tel" placeholder="0999999999" maxlength="20" required aria-describedby="ayuda-reg-whatsapp err-reg-whatsapp">
           <span class="ayuda" id="ayuda-reg-whatsapp" aria-live="polite">Ecuador: 0999999999. Otros países: + y código de país.</span>
           <span class="err" id="err-reg-whatsapp" aria-live="polite"></span>
@@ -118,12 +120,18 @@
         <div class="fila-2">
           <div class="campo">
             <label class="lb" for="reg-pass">Contraseña (mín. 8) <span class="req" aria-hidden="true">*</span></label>
-            <input class="in" id="reg-pass" type="password" autocomplete="new-password" minlength="8" required aria-describedby="err-reg-pass">
+            <div class="in-clave">
+              <input class="in" id="reg-pass" type="password" autocomplete="new-password" minlength="8" required aria-describedby="err-reg-pass">
+              <button type="button" class="ojo" data-ojo="reg-pass" aria-label="Mostrar contraseña" aria-pressed="false"></button>
+            </div>
             <span class="err" id="err-reg-pass" aria-live="polite"></span>
           </div>
           <div class="campo">
-            <label class="lb" for="reg-pass2">Confirmar contraseña <span class="req" aria-hidden="true">*</span></label>
-            <input class="in" id="reg-pass2" type="password" autocomplete="new-password" minlength="8" required aria-describedby="err-reg-pass2">
+            <label class="lb" for="reg-pass2">Repetir contraseña <span class="req" aria-hidden="true">*</span></label>
+            <div class="in-clave">
+              <input class="in" id="reg-pass2" type="password" autocomplete="new-password" minlength="8" required aria-describedby="err-reg-pass2">
+              <button type="button" class="ojo" data-ojo="reg-pass2" aria-label="Mostrar contraseña" aria-pressed="false"></button>
+            </div>
             <span class="err" id="err-reg-pass2" aria-live="polite"></span>
           </div>
         </div>

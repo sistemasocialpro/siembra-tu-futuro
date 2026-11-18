@@ -56,7 +56,7 @@
     const msg = String(error.message || '');
     const code = String(error.code || '');
     if (code === 'invalid_credentials' || /invalid login credentials/i.test(msg))
-      return 'Correo o contraseña incorrectos.';
+      return 'Usuario o contraseña incorrectos.';
     if (code === 'user_already_exists' || code === 'email_exists' || /already registered|already exists/i.test(msg))
       return 'Ese correo ya está registrado. Inicia sesión o usa otro correo.';
     if (code === 'weak_password' || /password should|password is too/i.test(msg))
@@ -145,8 +145,9 @@
   $('olvide').addEventListener('click', (e) => {
     e.preventDefault();
     ocultarMsg($('olvide-msg'));
+    // El login pide usuario: solo se copia si lo escrito es un correo
     const correoLogin = $('login-id').value.trim();
-    if (correoLogin && !$('olvide-correo').value) $('olvide-correo').value = correoLogin;
+    if (RE_CORREO.test(correoLogin) && !$('olvide-correo').value) $('olvide-correo').value = correoLogin;
     actualizarOlvideWa();
     mostrarVista('olvide');
     $('olvide-correo').focus();
@@ -313,10 +314,9 @@
     const boton = $('login-btn');
     ocultarMsg(msg);
 
-    const email = $('login-id').value.trim();
+    const usuario = $('login-id').value.trim();
     const pass = $('login-pass').value;
-    if (!email || !pass) return mostrarMsg(msg, 'Escribe tu correo y tu contraseña.');
-    if (!RE_CORREO.test(email)) return mostrarMsg(msg, 'El correo no es válido. Revísalo e inténtalo de nuevo.');
+    if (!usuario || !pass) return mostrarMsg(msg, 'Escribe tu usuario y tu contraseña.');
 
     // Recordarme: decide dónde se guarda la sesión
     guardarRecordar($('login-recordar').checked);
@@ -324,6 +324,22 @@
 
     cargando(boton, true, 'Entrando…');
     try {
+      // Supabase entra con correo: correo_para_login (SQL 17) lo devuelve solo si la clave es
+      // correcta. El correo queda en esta variable y nunca se muestra en pantalla.
+      // Si se escribe un correo (cuenta de administrador, que no tiene usuario) se usa directo.
+      let email = usuario;
+      if (!RE_CORREO.test(usuario)) {
+        const r = await sb.rpc('correo_para_login', { p_usuario: usuario.toLowerCase(), p_clave: pass });
+        if (r.error) {
+          if (r.error.code === 'P0001') return mostrarMsg(msg, r.error.message);
+          // Falta ejecutar el SQL 17: mientras tanto se puede entrar con el correo
+          if (r.error.code === 'PGRST202' || r.error.code === '42883')
+            return mostrarMsg(msg, 'La entrada con usuario todavía no está activa. Por ahora escribe tu correo en lugar del usuario.');
+          throw r.error;
+        }
+        if (!r.data) return mostrarMsg(msg, 'Usuario o contraseña incorrectos.');
+        email = r.data;
+      }
       const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
       if (error) throw error;
       await irAlInicio(data.session);
@@ -359,6 +375,7 @@
       if (!v) return 'Elige un nombre de usuario.';
       if (!/^[a-z0-9_]{3,20}$/.test(v))
         return 'De 3 a 20 caracteres: letras minúsculas, números o guion bajo (_), sin espacios ni tildes.';
+      if (v === usuarioOcupado) return 'Ese usuario ya existe. Elige otro.';
       return '';
     },
     'reg-correo': (el) => {
@@ -383,6 +400,41 @@
   };
 
   let intentoEnviar = false;
+
+  // ---------- Ojo: ver / ocultar contraseña ----------
+  document.querySelectorAll('[data-ojo]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const input = $(b.dataset.ojo);
+      const ver = input.type === 'password';
+      input.type = ver ? 'text' : 'password';
+      b.setAttribute('aria-pressed', ver ? 'true' : 'false');
+      b.setAttribute('aria-label', ver ? 'Ocultar contraseña' : 'Mostrar contraseña');
+    });
+  });
+
+  // ---------- Usuario: avisar al momento si ya existe ----------
+  const AYUDA_USUARIO = '3 a 20: minúsculas, números o _';
+  let usuarioOcupado = '';   // último usuario que la base dijo que ya existe
+  let revisionUsuario = 0;
+  let esperaUsuario = null;
+  async function revisarUsuarioLibre() {
+    const v = $('reg-usuario').value.trim().toLowerCase();
+    if (VALIDADORES['reg-usuario']($('reg-usuario'))) return;
+    const n = ++revisionUsuario;
+    const { data, error } = await sb.rpc('usuario_disponible', { p_usuario: v });
+    if (n !== revisionUsuario || error) return;
+    if (data === false) {
+      usuarioOcupado = v;
+      ponerError('reg-usuario', 'Ese usuario ya existe. Elige otro.');
+    } else {
+      $('ayuda-reg-usuario').textContent = 'Usuario disponible.';
+    }
+  }
+  $('reg-usuario').addEventListener('input', () => {
+    $('ayuda-reg-usuario').textContent = AYUDA_USUARIO;
+    clearTimeout(esperaUsuario);
+    esperaUsuario = setTimeout(revisarUsuarioLibre, 500);
+  });
 
   function ponerError(id, texto) {
     const el = $(id);
@@ -449,7 +501,8 @@
       const disp = await sb.rpc('usuario_disponible', { p_usuario: usuario });
       if (disp.error) throw disp.error;
       if (disp.data === false) {
-        ponerError('reg-usuario', 'Ese nombre de usuario ya está en uso. Prueba con otro.');
+        usuarioOcupado = usuario;
+        ponerError('reg-usuario', 'Ese usuario ya existe. Elige otro.');
         $('reg-usuario').focus();
         return mostrarMsg(msg, 'Revisa los campos marcados en rojo.');
       }
