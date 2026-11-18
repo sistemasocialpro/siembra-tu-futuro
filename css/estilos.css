@@ -160,48 +160,71 @@ button, input { font-family: inherit; }
   .fila-2 { grid-template-columns: 1fr; }
 }
 
-/* Frase corta del encabezado: solo en celular */
-.hero-corta { display: none; }
+/* Logo y "Reglas y políticas" dentro de la tarjeta: solo en celular */
+.card-logo, .pie-card { display: none; }
 
 /* ---------- Acceso en celular (menos de 768px): Iniciar sesión y Registrarse ----------
-   Encabezado verde bajo con esquinas redondeadas; la tarjeta se monta 64px sobre el verde.
+   Sin franja verde: fondo verde muy claro y todo dentro de una sola tarjeta blanca.
+   Los campos llevan el nombre dentro (placeholder, ver data-ph-movil en js/auth.js).
    En computadora (768px o más) no cambia nada. */
 @media (max-width: 767.98px) {
-  .acceso { flex-direction: column; }
-  .acceso-hero {
-    flex: none; padding: 40px 16px 90px; gap: 8px; text-align: center; align-items: center;
-    border-radius: 0 0 28px 28px;
+  .acceso {
+    flex-direction: column;
+    background: linear-gradient(180deg, #ecfdf3 0%, #f4fbf6 55%, #e3f6ea 100%);
   }
-  .acceso-hero .logo { width: 56px; height: 56px; }
-  .acceso-hero h1 { font-size: 28px; }
-  .acceso-hero .hero-lema, .acceso-hero .hero-sub, .acceso-hero .redes { display: none; }
-  .hero-corta { display: block; margin: 0; font-size: 15px; color: #d9f5e3; }
+  .acceso-hero { display: none; }
 
   .acceso-panel {
-    flex: none; flex-direction: column; align-items: stretch; justify-content: flex-start;
-    padding: 0 16px 28px; background: transparent;
+    flex: 1; flex-direction: column; align-items: stretch; justify-content: flex-start;
+    padding: 24px 16px; background: transparent;
   }
   .acceso-card, .acceso-card.ancha {
-    max-width: none; width: 100%; margin: -64px 0 0; padding: 20px 18px 24px;
-    border-radius: 24px; box-shadow: 0 10px 30px rgba(20, 83, 45, .14);
-    position: relative;
+    max-width: none; width: 100%; margin: 0; padding: 24px;
+    border-radius: 32px; box-shadow: 0 12px 32px rgba(20, 83, 45, .10);
   }
-  .acceso-card h2 { font-size: 24px; }
-  .acceso-card .tabs { margin-bottom: 18px; }
-  .acceso-card .tab { min-height: 44px; }
+  .card-logo { display: block; width: 72px; height: 72px; margin: 4px auto 18px; }
+  .acceso-card .tabs { display: none; }
+  .acceso-card form { gap: 14px; }
 
-  /* Campos de 50px y botones de 52px a todo el ancho */
-  .acceso-card .in { height: 50px; padding: 0 14px; }
-  .acceso-card .in-clave .in { padding-right: 52px; }
-  .acceso-card .btn-grande { width: 100%; min-height: 52px; padding: 0 16px; font-size: 17px; }
+  /* Título y subtítulo */
+  .acceso-card h2 { font-size: 34px; font-weight: 800; line-height: 1.12; text-align: left; }
+  .acceso-card h2 + .mut, .acceso-card h2 + p.mut { font-size: 16px; color: var(--mut); }
+
+  /* Sin etiquetas encima (siguen ahí para lectores de pantalla) */
+  #form-login .lb-texto, #form-login label.lb[for], #form-registro .campo > label.lb {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+    clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+  #form-login .lb { gap: 0; }
+
+  /* Campos de 56px, borde gris claro, esquinas de 14px, letra de 17px */
+  .acceso-card .in {
+    height: 56px; padding: 0 16px; font-size: 17px;
+    background: #fff; border: 1.5px solid #dfe5e1; border-radius: 14px;
+  }
+  .acceso-card .in::placeholder { color: #8a968f; opacity: 1; }
+  .acceso-card .in:focus { outline: 2px solid var(--verde); outline-offset: 0; border-color: transparent; }
+  .acceso-card .in-clave .in { padding-right: 56px; }
+  .acceso-card .ojo { right: 8px; }
+  .acceso-card .fila-2 { grid-template-columns: 1fr; gap: 14px; }
+
+  /* Recordarme a la izquierda y ¿Olvidaste tu clave? a la derecha, en la misma línea */
+  #form-login .fila-entre { flex-wrap: nowrap; font-size: 14px; gap: 8px; }
+  #form-login .fila-entre .check { white-space: nowrap; align-items: center; }
+  #form-login .fila-entre .link { white-space: nowrap; }
+
+  /* Botón de 56px a todo el ancho, letra de 18px en negrita */
+  .acceso-card .btn-grande {
+    width: 100%; min-height: 56px; padding: 0 16px; font-size: 18px; font-weight: 700; border-radius: 14px;
+  }
   .acceso-card a.btn-grande { display: flex; align-items: center; justify-content: center; }
-  .acceso-card .fila-2 { grid-template-columns: 1fr; }
-  /* El asterisco va en la misma línea que el nombre del campo */
-  .acceso-card .campo > .lb { display: block; }
 
-  /* "Reglas y políticas" debajo de la tarjeta, centrado */
-  .acceso-panel .pie-acceso { width: 100%; margin: 18px 0 0; text-align: center; }
+  /* Enlaces de abajo, centrados y dentro de la tarjeta */
+  .acceso-card .centro { font-size: 15px; }
+  .pie-card { display: block; margin: 0; text-align: center; font-size: 14px; }
+  .acceso-panel > .pie-acceso { display: none; }
 }
+
 
 /* ---------- Panel (panel.html) ---------- */
 body.cargando .app { visibility: hidden; }

@@ -545,4 +545,20 @@
       cargando(boton, false);
     }
   });
+
+  // ---------- Diseño en celular (menos de 768px) ----------
+  // Los campos no llevan etiqueta encima: el nombre va dentro como placeholder (data-ph-movil).
+  // En computadora se deja el placeholder original (por ejemplo 0999999999 en WhatsApp).
+  const celular = window.matchMedia('(max-width: 767.98px)');
+  const conPlaceholderMovil = document.querySelectorAll('[data-ph-movil]');
+  conPlaceholderMovil.forEach((x) => { x.dataset.phPc = x.getAttribute('placeholder') || ''; });
+  function aplicarPlaceholders() {
+    conPlaceholderMovil.forEach((x) => {
+      const ph = celular.matches ? x.dataset.phMovil : x.dataset.phPc;
+      if (ph) x.setAttribute('placeholder', ph); else x.removeAttribute('placeholder');
+    });
+  }
+  aplicarPlaceholders();
+  if (celular.addEventListener) celular.addEventListener('change', aplicarPlaceholders);
+  else if (celular.addListener) celular.addListener(aplicarPlaceholders);
 })();
