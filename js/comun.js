@@ -257,6 +257,15 @@ const NOMBRE_POSICION = {
   regalador_3: 'Regalador 3',
   regalador_4: 'Regalador 4'
 };
+const NOMBRE_CORTO_POSICION = {
+  recibidor: 'RECIB.',
+  constructor_1: 'CONST. 1',
+  constructor_2: 'CONST. 2',
+  regalador_1: 'REG. 1',
+  regalador_2: 'REG. 2',
+  regalador_3: 'REG. 3',
+  regalador_4: 'REG. 4'
+};
 
 function esRegalador(posicion) { return /^regalador_/.test(posicion); }
 
@@ -289,6 +298,8 @@ function crearMapaGrupo(posiciones, opciones) {
       role: 'listitem'
     },
       el('div', { class: 'cas-rol', text: NOMBRE_POSICION[pos].toUpperCase() }),
+      // En celular el mapa es angosto: se muestra el nombre corto (RECIB., CONST. 1, REG. 1)
+      el('div', { class: 'cas-rol-corto', 'aria-hidden': 'true', text: NOMBRE_CORTO_POSICION[pos] }),
       el('div', { class: 'cas-nombre', text: p.user_id ? (p.nombre_usuario || '—') : 'Esperando...' }),
       el('div', { class: 'cas-estado', text: estadoCasilla(p) }),
       esYo ? el('div', { class: 'cas-tu', text: 'TÚ' }) : null

@@ -257,16 +257,51 @@ a.btn { display: inline-block; text-align: center; text-decoration: none; }
 .estado-chip.activo { background: #dcfce7; color: var(--verde-osc); }
 .estado-chip.completado { background: #fef9c3; color: var(--amarillo-osc); }
 
+/* Mapa del grupo (misma forma en computadora y celular):
+   regaladores en las puntas, constructores a los lados y el recibidor al centro,
+   unidos con líneas: recibidor -> constructores -> sus dos regaladores.
+   --gx/--gy: separación entre casillas; --bw: borde de la casilla; --lw: grosor de la línea. */
 .mapa {
+  --gx: 24px; --gy: 26px; --bw: 3px; --lw: 2px; --mapa-linea: rgba(134, 239, 172, .55);
   background: var(--verde-noche); border-radius: 20px; padding: 26px;
   display: grid; grid-template-columns: repeat(5, minmax(0, 152px)); justify-content: center; align-items: center;
   grid-template-areas: "r1 c1 rec c2 r3" "r2 c1 rec c2 r4";
-  gap: 26px 24px;
+  gap: var(--gy) var(--gx);
 }
 .casilla {
-  background: var(--verde-osc); color: #fff; border: 3px solid transparent; border-radius: 16px;
-  padding: 10px; text-align: center; display: flex; flex-direction: column; gap: 2px; min-width: 0;
+  position: relative;
+  background: var(--verde-osc); color: #fff; border: var(--bw) solid transparent; border-radius: 16px;
+  padding: 10px; text-align: center; display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 0;
 }
+/* Las puntas ocupan toda su fila para que la línea vertical una a las dos sin cortes */
+.casilla[data-pos^="regalador"] { align-self: stretch; }
+.cas-rol-corto { display: none; font-size: 9px; font-weight: 700; letter-spacing: .02em; }
+
+/* Líneas */
+.casilla[data-pos="recibidor"]::before, .casilla[data-pos="recibidor"]::after,
+.casilla[data-pos^="constructor"]::before,
+.casilla[data-pos^="regalador"]::before, .casilla[data-pos^="regalador"]::after {
+  content: ""; position: absolute; background: var(--mapa-linea); pointer-events: none;
+}
+/* Recibidor -> constructor 1 (izquierda) y constructor 2 (derecha) */
+.casilla[data-pos="recibidor"]::before,
+.casilla[data-pos="recibidor"]::after { top: calc(50% - var(--lw) / 2); height: var(--lw); width: calc(var(--gx) + var(--bw)); }
+.casilla[data-pos="recibidor"]::before { right: 100%; }
+.casilla[data-pos="recibidor"]::after { left: 100%; }
+/* Constructor -> mitad del espacio hacia sus regaladores */
+.casilla[data-pos^="constructor"]::before { top: calc(50% - var(--lw) / 2); height: var(--lw); width: calc(var(--bw) + var(--gx) / 2 + var(--lw) / 2); }
+.casilla[data-pos="constructor_1"]::before { right: 100%; }
+.casilla[data-pos="constructor_2"]::before { left: 100%; }
+/* Regalador: tramo horizontal hacia su constructor... */
+.casilla[data-pos^="regalador"]::before { top: calc(50% - var(--lw) / 2); height: var(--lw); width: calc(var(--bw) + var(--gx) / 2 + var(--lw) / 2); }
+.casilla[data-pos="regalador_1"]::before, .casilla[data-pos="regalador_2"]::before { left: 100%; }
+.casilla[data-pos="regalador_3"]::before, .casilla[data-pos="regalador_4"]::before { right: 100%; }
+/* ...y media línea vertical: la de arriba baja y la de abajo sube hasta encontrarse */
+.casilla[data-pos^="regalador"]::after { width: var(--lw); }
+.casilla[data-pos="regalador_1"]::after, .casilla[data-pos="regalador_2"]::after { left: calc(100% + var(--bw) + var(--gx) / 2 - var(--lw) / 2); }
+.casilla[data-pos="regalador_3"]::after, .casilla[data-pos="regalador_4"]::after { right: calc(100% + var(--bw) + var(--gx) / 2 - var(--lw) / 2); }
+.casilla[data-pos="regalador_1"]::after, .casilla[data-pos="regalador_3"]::after { top: calc(50% - var(--lw) / 2); bottom: calc(-1 * (var(--bw) + var(--gy) / 2)); }
+.casilla[data-pos="regalador_2"]::after, .casilla[data-pos="regalador_4"]::after { top: calc(-1 * (var(--bw) + var(--gy) / 2)); bottom: calc(50% - var(--lw) / 2); }
 .casilla[data-pos="recibidor"] { grid-area: rec; background: var(--amarillo); color: var(--texto); }
 .casilla[data-pos="constructor_1"] { grid-area: c1; }
 .casilla[data-pos="constructor_2"] { grid-area: c2; }
@@ -485,13 +520,25 @@ body.trabajando, body.trabajando button { cursor: wait; }
   .grid-niveles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   .nivel { padding: 16px 12px; }
   .nivel-nombre { font-size: 16px; }
-  /* Mapa en celular: recibidor arriba; cada constructor con sus dos regaladores debajo */
+  /* Mapa en celular: la MISMA forma que en computadora (5 columnas con líneas), compacta
+     para que quepa en 360px de ancho; el rol se muestra corto (RECIB., CONST. 1, REG. 1) */
   .mapa {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-areas: "rec rec" "c1 c2" "r1 r3" "r2 r4";
-    gap: 12px; padding: 16px;
+    --gx: 7px; --gy: 12px; --bw: 2px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    padding: 12px 8px; border-radius: 16px;
   }
-  .casilla[data-pos="recibidor"] { justify-self: center; width: min(100%, 220px); }
+  .casilla { padding: 6px 2px; border-radius: 10px; gap: 1px; }
+  .cas-rol { display: none; }
+  .cas-rol-corto { display: block; }
+  .cas-nombre { font-size: 10px; line-height: 1.2; }
+  .cas-estado { font-size: 9px; line-height: 1.2; overflow-wrap: anywhere; }
+  .cas-tu { font-size: 9px; }
+  .cas-acciones { gap: 3px; margin-top: 4px; }
+  .cas-acciones .cb {
+    width: 100%; font-size: 9px; padding: 3px 1px; line-height: 1.15; border-radius: 8px;
+    white-space: normal; overflow-wrap: anywhere; hyphens: auto;
+  }
+  .cas-pista { font-size: 8px; }
   .grupo-cabecera { padding: 16px; }
   .grupo-titulo { font-size: 18px; }
   .tabs-admin { max-width: none; }
