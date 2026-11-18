@@ -268,6 +268,116 @@
     actualizarBadge();
   }
 
+  // ---------- Reserva de referidos (SQL 23) ----------
+  // mi_reserva(): si estoy en la lista de espera de mi patrocinador ("Eres el N en espera")
+  // o si me quitó de sus referidos. Sin el SQL 23 devuelve null y no se muestra nada.
+  async function leerMiReserva() {
+    const { data, error } = await sb.rpc('mi_reserva');
+    return error ? null : data;
+  }
+
+  function enEsperaOEliminado(mr) {
+    return !!mr && (mr.estado === 'reserva' || mr.estado === 'eliminado');
+  }
+
+  function tarjetaReserva(mr) {
+    const enEspera = mr.estado === 'reserva';
+    return el('section', { class: 'card reserva-card' },
+      el('span', { class: 'pill pill-amarilla', text: enEspera ? 'Pendiente de posición' : 'Sin lugar con tu patrocinador' }),
+      el('h3', { text: enEspera ? 'Eres el ' + mr.numero + ' en espera' : 'Ya no eres referido activo' }),
+      el('p', { class: 'mut', text: enEspera
+        ? 'Estás en la lista de espera de ' + mr.patrocinador + ' (su vuelta ' + mr.vuelta + '). Cuando uno de sus 2 referidos deje su lugar, lo tomarás automáticamente y empezará tu plazo de ' + mr.plazo_tarea + ' para hacer tu tarea.'
+        : mr.patrocinador + ' te quitó de sus 2 referidos. Puedes seguir participando: entra en el primer lugar libre.' }),
+      enEspera ? el('p', { class: 'mut', text: 'Si no quieres esperar, entra ahora en el primer lugar libre del primer nivel:' }) : null,
+      el('div', { class: 'botones' },
+        el('button', { type: 'button', class: 'btn', onclick: entrarPorDerrame, text: 'Entrar por derrame' }))
+    );
+  }
+
+  async function entrarPorDerrame() {
+    const niveles = await leerNiveles();
+    const primero = niveles[0];
+    const si = await confirmar({
+      titulo: 'Entrar por derrame',
+      texto: [
+        el('p', { class: 'modal-p' }, 'Entrarás como ', el('b', { text: 'regalador' }), ' en el primer lugar libre del nivel ', el('b', { text: primero.nombre }), ' y dejarás la lista de espera de tu patrocinador.'),
+        el('div', { class: 'modal-nota', text: 'Tu plazo para hacer la tarea empieza en cuanto entres. No se pide ni se recibe dinero.' })
+      ],
+      boton: 'Sí, entrar por derrame'
+    });
+    if (!si) return;
+    const { data, error } = await sb.rpc('participar', { p_nivel_id: primero.id });
+    if (error) return aviso(traducirErrorDatos(error));
+    if (data && data.resultado === 'colocado') {
+      aviso('¡Listo! Entraste como ' + (NOMBRE_POSICION[data.posicion] || 'regalador') + ' en el nivel ' + data.nivel + '. Tu reloj ya empezó: haz tu tarea y márcala como hecha.', 'ok');
+      location.hash = enlaceGrupo(data.nivel_id, data.vuelta);
+    } else {
+      aviso('No hay ningún lugar libre en este momento. Quedaste en la lista de espera del nivel ' + ((data && data.nivel) || primero.nombre) + '.', 'info');
+      refrescar();
+    }
+    actualizarBadge();
+  }
+
+  async function eliminarReferido(a, vuelta) {
+    const si = await confirmar({
+      titulo: 'Eliminar referido',
+      texto: [
+        el('p', { class: 'modal-p' }, '¿Quieres quitar a ', el('b', { text: a.nombre_usuario }), ' de tus referidos de la vuelta ' + vuelta + '?'),
+        el('div', { class: 'modal-nota', text: 'Se libera su lugar y el 1.º en espera lo toma automáticamente. ' + a.nombre_usuario + ' podrá seguir participando por derrame.' })
+      ],
+      boton: 'Sí, eliminar'
+    });
+    if (!si) return;
+    const { error } = await sb.rpc('eliminar_referido', { p_user_id: a.user_id, p_vuelta: vuelta });
+    if (error) return aviso(traducirErrorDatos(error));
+    aviso(a.nombre_usuario + ' ya no es tu referido. Si había alguien en espera, ya tomó su lugar.', 'ok');
+    refrescar();
+    actualizarReferidos();
+  }
+
+  // Tarjeta "Mis referidos - vuelta N": los 2 activos (con Eliminar) y la lista de espera en orden
+  function tarjetaReferidos(v) {
+    const lista = el('ul', { class: 'ref-lista' });
+    v.activos.forEach((a) => {
+      const pos = a.posicion ? (NOMBRE_POSICION[a.posicion.posicion] || a.posicion.posicion) + ' · ' + a.posicion.nivel : 'Sin posición todavía';
+      lista.appendChild(el('li', { class: 'ref-item' },
+        el('div', { class: 'ref-quien' },
+          el('b', { text: a.nombre_usuario }),
+          el('span', { class: 'mut', text: pos + (a.tipo === 'socio' ? ' · volvió contigo' : '') })),
+        // Solo se puede eliminar a quien todavía es regalador o no tiene posición
+        a.posicion && !String(a.posicion.posicion).startsWith('regalador')
+          ? el('span', { class: 'pill pill-gris', text: 'Ya avanzó' })
+          : el('button', { type: 'button', class: 'bt-salir btn-chico', onclick: () => eliminarReferido(a, v.vuelta), text: 'Eliminar' })
+      ));
+    });
+    for (let i = v.activos.length; i < 2; i++) {
+      lista.appendChild(el('li', { class: 'ref-item ref-libre' },
+        el('span', { class: 'mut', text: 'Lugar libre: invita a alguien con tu enlace' })));
+    }
+    const espera = el('ol', { class: 'ref-espera' });
+    v.espera.forEach((e) => espera.appendChild(el('li', null,
+      el('b', { text: e.nombre_usuario }),
+      el('span', { class: 'mut', text: ' · registrado el ' + formatoFecha(e.registrado) }))));
+    return el('section', { class: 'card ref-card' },
+      el('h3', { text: 'Mis referidos - vuelta ' + v.vuelta }),
+      lista,
+      el('h4', { class: 'ref-sub', text: 'En espera' + (v.espera.length ? ' (' + v.espera.length + ')' : '') }),
+      v.espera.length ? espera : el('p', { class: 'mut', text: 'Nadie en espera.' }),
+      el('p', { class: 'ayuda ref-nota', text: 'Si eliminas a un referido, el 1ro en espera toma su lugar automáticamente.' })
+    );
+  }
+
+  async function cargarReferidosYReserva() {
+    const [rDet, mr] = await Promise.all([sb.rpc('mis_referidos_detalle'), leerMiReserva()]);
+    const cr = $('inicio-reserva');
+    vaciar(cr);
+    if (enEsperaOEliminado(mr)) cr.appendChild(tarjetaReserva(mr));
+    const cf = $('inicio-referidos');
+    vaciar(cf);
+    if (rDet.error || !Array.isArray(rDet.data)) return; // sin el SQL 23
+    rDet.data.slice().sort((a, b) => b.vuelta - a.vuelta).forEach((v) => cf.appendChild(tarjetaReferidos(v)));
+  }
+
   // ---------- Tarjeta del recibidor: aprobación de tareas ----------
   function estadoAprobacion(p) {
     if (!p.user_id) return ['Posición libre', 'pill-gris'];
@@ -403,6 +513,8 @@
           el('div', { class: 'mut', text: 'Estás en la vuelta ' + datos.vueltaActual + '. Cada vez que vuelves al primer nivel empieza una vuelta nueva.' }),
           lista));
       }
+      // Reserva de referidos (SQL 23): "Eres el N en espera" y "Mis referidos - vuelta N"
+      cargarReferidosYReserva().catch(() => {});
     } catch (err) {
       if (turno !== turnoInicio) return;
       const cr = $('inicio-reloj');
@@ -444,15 +556,21 @@
     const lista = $('niveles-lista');
     const cajaAviso = $('niveles-aviso');
     try {
-      const [niveles, datos] = await Promise.all([leerNiveles(), leerMisDatos()]);
+      const [niveles, datos, mr] = await Promise.all([leerNiveles(), leerMisDatos(), leerMiReserva()]);
       if (turno !== turnoNiveles) return;
       const mias = datos.posiciones;
       const espera = datos.espera;
       const ciclos = datos.ciclos;
+      const porDerrame = enEsperaOEliminado(mr); // (23) en espera: el primer nivel se entra por derrame
 
       vaciar(cajaAviso);
-      cajaAviso.hidden = mias.length > 0;
-      if (!mias.length) cajaAviso.appendChild(avisoSinGrupo(espera, niveles, ciclos));
+      if (porDerrame) {
+        cajaAviso.hidden = false;
+        cajaAviso.appendChild(tarjetaReserva(mr));
+      } else {
+        cajaAviso.hidden = mias.length > 0;
+        if (!mias.length) cajaAviso.appendChild(avisoSinGrupo(espera, niveles, ciclos));
+      }
 
       const completados = new Set(ciclos.map((c) => c.nivel_id));
       // Sin el SQL 18 (modo anterior): habilitado = el primer nivel o el siguiente a uno completado
@@ -481,7 +599,11 @@
           const nueva = conV && vueltaEntrar > datos.vueltaActual;
           const texto = nueva ? 'Empezar vuelta ' + vueltaEntrar
             : (vueltasHechas.length || aqui.length ? 'Participar de nuevo' : 'Participar') + txtV(vueltaEntrar);
-          botones.push(el('button', { type: 'button', class: 'btn btn-nivel', onclick: () => participar(n, vueltaEntrar, nueva), text: texto }));
+          if (porDerrame && !nivelAnterior(niveles, n)) {
+            botones.push(el('button', { type: 'button', class: 'btn btn-nivel', onclick: entrarPorDerrame, text: 'Entrar por derrame' }));
+          } else {
+            botones.push(el('button', { type: 'button', class: 'btn btn-nivel', onclick: () => participar(n, vueltaEntrar, nueva), text: texto }));
+          }
         }
 
         const activo = botones.length > 0 || vueltasHechas.length > 0;
@@ -780,9 +902,10 @@
   // =====================================================================
   // "Referidos: X de 2" junto al enlace (máximo 2 referidos activos por patrocinador)
   async function actualizarReferidos() {
-    const [{ data, error }, datos] = await Promise.all([sb.rpc('mis_referidos'), leerMisDatos().catch(() => null)]);
+    const [{ data, error }, datos, r23] = await Promise.all([sb.rpc('mis_referidos'), leerMisDatos().catch(() => null), sb.rpc('mi_reserva')]);
     if (error || typeof data !== 'number') return; // sin el SQL 10 no se muestra
     const conV = datos && datos.conVueltas;
+    const conReserva = !r23.error; // (23) el enlace ya no se bloquea: los demás quedan en espera
     const n = Math.min(data, 2);
     const caja = $('referidos');
     vaciar(caja);
@@ -790,13 +913,13 @@
       el('span', { class: 'circulo' + (n >= 1 ? ' lleno' : '') }),
       el('span', { class: 'circulo' + (n >= 2 ? ' lleno' : '') }));
     // Con vueltas, el enlace admite 2 personas nuevas en cada vuelta
-    caja.append(el('span', { text: (conV ? 'Referidos de tu vuelta ' + datos.vueltaActual : 'Referidos') + ': ' + data + ' de 2' }), circ);
+    caja.append(el('span', { text: (conReserva ? 'Referidos activos' : 'Referidos') + (conV ? ' de tu vuelta ' + datos.vueltaActual : '') + ': ' + data + ' de 2' }), circ);
     caja.hidden = false;
     const avisoLleno = $('referidos-aviso');
     avisoLleno.textContent = conV
       ? 'Ya tienes tus 2 referidos de la vuelta ' + datos.vueltaActual + '. Cuando completes el primer nivel y vuelvas a entrar, empezará una vuelta nueva y tu enlace tendrá 2 lugares más.'
       : 'Tu link está inhabilitado porque ya tienes 2 referidos';
-    avisoLleno.hidden = data < 2;
+    avisoLleno.hidden = conReserva || data < 2;
   }
 
   async function cargarPerfil() {

@@ -770,3 +770,24 @@ a.soporte-card:hover, a.soporte-card:focus-visible { border-color: var(--verde);
   .hist-fila .pill { grid-column: 1 / -1; justify-self: start; }
   .enlace-fila { grid-template-columns: 1fr; }
 }
+
+/* ---------- Reserva de referidos (Inicio) ---------- */
+#inicio-reserva:empty { display: none; }
+/* Columna del enlace: debajo van las tarjetas "Mis referidos - vuelta N" */
+.col-invitacion { flex: 2; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.col-invitacion .card-invitacion { flex: none; }
+.reserva-card { display: flex; flex-direction: column; gap: 8px; border: 2px solid var(--amarillo); }
+.reserva-card .pill { align-self: flex-start; }
+.reserva-card h3, .reserva-card p { margin: 0; }
+.ref-card { display: flex; flex-direction: column; gap: 10px; }
+.ref-card h3 { margin: 0; }
+.ref-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.ref-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--linea); }
+.ref-item:first-child { border-top: 0; }
+.ref-quien { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.ref-quien .mut { font-size: 13px; }
+.ref-libre .mut { font-style: italic; }
+.ref-sub { margin: 4px 0 0; font-size: 15px; }
+.ref-espera { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.ref-espera .mut { font-size: 13px; }
+.ref-nota { margin: 0; }
