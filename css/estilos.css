@@ -197,14 +197,14 @@ button, input { font-family: inherit; }
   }
   #form-login .lb { gap: 0; }
 
-  /* Campos de 56px, borde gris claro, esquinas de 14px, letra de 17px */
+  /* Campos de 60px, borde gris claro, esquinas de 16px, letra de 18px */
   .acceso-card .in {
-    height: 56px; padding: 0 16px; font-size: 17px;
-    background: #fff; border: 1.5px solid #dfe5e1; border-radius: 14px;
+    height: 60px; padding: 0 16px; font-size: 18px;
+    background: #fff; border: 1.5px solid #dfe5e1; border-radius: 16px;
   }
   .acceso-card .in::placeholder { color: #8a968f; opacity: 1; }
   .acceso-card .in:focus { outline: 2px solid var(--verde); outline-offset: 0; border-color: transparent; }
-  .acceso-card .in-clave .in { padding-right: 56px; }
+  .acceso-card .in-clave .in { padding-right: 58px; }
   .acceso-card .ojo { right: 8px; }
   .acceso-card .fila-2 { grid-template-columns: 1fr; gap: 14px; }
 
@@ -213,9 +213,9 @@ button, input { font-family: inherit; }
   #form-login .fila-entre .check { white-space: nowrap; align-items: center; }
   #form-login .fila-entre .link { white-space: nowrap; }
 
-  /* Botón de 56px a todo el ancho, letra de 18px en negrita */
+  /* Botón de 60px a todo el ancho, letra de 20px en negrita */
   .acceso-card .btn-grande {
-    width: 100%; min-height: 56px; padding: 0 16px; font-size: 18px; font-weight: 700; border-radius: 14px;
+    width: 100%; min-height: 60px; padding: 0 16px; font-size: 20px; font-weight: 700; border-radius: 16px;
   }
   .acceso-card a.btn-grande { display: flex; align-items: center; justify-content: center; }
 
