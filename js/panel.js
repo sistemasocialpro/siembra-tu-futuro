@@ -203,6 +203,45 @@
     refrescar();
   }
 
+  // (26) El patrocinador quita a uno de sus constructores de esta repetición
+  async function quitarDeRepeticion(p, nivelNombre) {
+    const si = await confirmar({
+      titulo: 'Quitar de esta repetición',
+      texto: [
+        el('p', { class: 'modal-p' }, '¿Quitar a ', el('b', { text: p.nombre_usuario || 'esta persona' }), ' de tu grupo repetido del nivel ' + nivelNombre + '?'),
+        el('div', { class: 'modal-nota', text: 'Sale solo de este grupo: sus otras posiciones y su cuenta siguen igual, y no entrará automáticamente en tus próximas repeticiones. Su lugar queda libre y lo llenas eligiendo a alguien de tu lista de espera. Tu grupo no sube de nivel hasta que lo llenes.' })
+      ],
+      boton: 'Sí, quitar',
+      peligro: true
+    });
+    if (!si) return;
+    const r = await sb.rpc('quitar_de_repeticion', { p_posicion_id: p.posicion_id });
+    if (r.error) return aviso(traducirErrorDatos(r.error));
+    aviso(r.data + ' salió de esta repetición. Ahora elige a alguien de tu lista de espera para su lugar.', 'ok');
+    refrescar();
+  }
+
+  // (26) Llenar un lugar de constructor del grupo repetido con mi lista de espera
+  async function llenarConstructor(p, nivelNombre) {
+    const { data: candidatos, error } = await sb.rpc('candidatos_constructor_repetido', { p_posicion_id: p.posicion_id });
+    if (error) return aviso(traducirErrorDatos(error));
+    const elegido = await elegirDeLista({
+      titulo: 'Elegir de mi lista de espera',
+      sub: NOMBRE_POSICION[p.posicion] + ' · Nivel ' + nivelNombre + '. Entra directo como constructor y te sigue en tus repeticiones. Tus 2 referidos no cambian.',
+      items: (candidatos || []).map((c) => ({
+        titulo: c.nombre_usuario,
+        sub: 'En espera desde ' + formatoFecha(c.en_espera_desde),
+        valor: c
+      })),
+      vacio: 'No tienes a nadie en tu lista de espera para este nivel. Cuando alguien se registre con tu enlace podrás elegirlo aquí.'
+    });
+    if (!elegido) return;
+    const r = await sb.rpc('llenar_constructor_repetido', { p_posicion_id: p.posicion_id, p_user_id: elegido.user_id });
+    if (r.error) return aviso(traducirErrorDatos(r.error));
+    aviso(r.data + ' entró como ' + NOMBRE_POSICION[p.posicion] + '.', 'ok');
+    refrescar();
+  }
+
   async function participar(nivel) {
     const primero = !nivelAnterior(nivelesCache || [nivel], nivel); // primer nivel por orden
     const si = await confirmar({
@@ -826,6 +865,14 @@
 
       const estado = rGrupo.data && rGrupo.data.estado === 'completado' ? 'completado' : 'activo';
       const repetido = rGrupo.data && rGrupo.data.tipo === 'repetido';
+      // (26) Grupo repetido: "Sigue a" / "Invitado por" y Quitar / Elegir de mi lista de espera
+      const infoRep = {};
+      if (repetido) {
+        const rInfo = await sb.rpc('info_repeticion', { p_grupo_id: mia.grupo_id });
+        if (turno !== turnoGrupo) return;
+        if (!rInfo.error && Array.isArray(rInfo.data)) rInfo.data.forEach((x) => { infoRep[x.posicion] = x; });
+      }
+      const constructorVacio = Object.values(infoRep).some((x) => x.puedo_llenar);
       cont.appendChild(el('section', { class: 'card grupo-cabecera' },
         el('div', null,
           el('div', { class: 'grupo-titulo', text: 'Grupo · ' + etiquetaNivel(nivel) }),
@@ -837,13 +884,31 @@
         el('span', { class: 'estado-chip ' + estado, text: 'Estado: ' + estado })
       ));
 
-      // Mapa: casillas en plazo vencido con "Retirar y reemplazar" para quien invitó a esa persona
+      if (constructorVacio) {
+        cont.appendChild(el('div', { class: 'alerta-roja', role: 'alert',
+          text: 'Tu grupo no sube de nivel mientras tenga un lugar de constructor vacío. Toca "Elegir de mi lista de espera" en esa casilla.' }));
+      }
+
+      // Mapa: casillas en plazo vencido con "Retirar y reemplazar" para quien invitó a esa persona;
+      // en un grupo repetido, además "Sigue a" / "Invitado por" y las acciones del patrocinador
       cont.appendChild(crearMapaGrupo(posiciones, {
         miId,
-        acciones: (p) => (p.user_id && p.estado === 'plazo_vencido' && p.es_mi_invitado)
-          ? el('div', { class: 'cas-acciones' },
-              el('button', { type: 'button', class: 'cb cb-asignar', onclick: () => retirarYReemplazar(p, nivel.nombre), text: 'Retirar y reemplazar' }))
-          : null
+        acciones: (p) => {
+          const info = infoRep[p.posicion] || {};
+          const partes = [];
+          if (info.sigue_a) partes.push(el('div', { class: 'cas-sigue', text: 'Sigue a: ' + info.sigue_a }));
+          if (info.invitado_por) partes.push(el('div', { class: 'cas-invitado', text: 'Invitado por: ' + info.invitado_por }));
+          if (info.puedo_quitar) {
+            partes.push(el('button', { type: 'button', class: 'cb cb-quitar', onclick: () => quitarDeRepeticion(p, nivel.nombre), text: 'Quitar de esta repetición' }));
+          }
+          if (info.puedo_llenar) {
+            partes.push(el('button', { type: 'button', class: 'cb cb-asignar', onclick: () => llenarConstructor(p, nivel.nombre), text: 'Elegir de mi lista de espera' }));
+          }
+          if (p.user_id && p.estado === 'plazo_vencido' && p.es_mi_invitado) {
+            partes.push(el('button', { type: 'button', class: 'cb cb-asignar', onclick: () => retirarYReemplazar(p, nivel.nombre), text: 'Retirar y reemplazar' }));
+          }
+          return partes.length ? el('div', { class: 'cas-acciones' }, ...partes) : null;
+        }
       }));
 
       if (mia.posicion === 'recibidor') {

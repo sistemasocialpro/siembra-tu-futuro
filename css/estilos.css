@@ -416,6 +416,9 @@ a.btn-nivel { display: block; text-align: center; text-decoration: none; }
 .casilla[data-pos="recibidor"] .cb-asignar { background: var(--verde-osc); color: #fff; }
 .casilla[data-pos="recibidor"] .cb-quitar { border-color: #b91c1c; color: #b91c1c; }
 .cas-pista { width: 100%; font-size: 10px; opacity: .8; }
+/* Grupo repetido: a quién sigue cada casilla y, más chico, quién la invitó */
+.cas-sigue { width: 100%; font-size: 11px; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
+.cas-invitado { width: 100%; font-size: 10px; opacity: .75; line-height: 1.2; overflow-wrap: anywhere; }
 
 /* ---------- Administración ---------- */
 body.trabajando, body.trabajando button { cursor: wait; }
@@ -623,6 +626,8 @@ body.trabajando, body.trabajando button { cursor: wait; }
     white-space: normal; overflow-wrap: anywhere; hyphens: auto;
   }
   .cas-pista { font-size: 8px; }
+  .cas-sigue { font-size: 8.5px; letter-spacing: -.02em; }
+  .cas-invitado { font-size: 7.5px; letter-spacing: -.02em; }
   .grupo-cabecera { padding: 16px; }
   .grupo-titulo { font-size: 18px; }
   .tabs-admin { max-width: none; }
