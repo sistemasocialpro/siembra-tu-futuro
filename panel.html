@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/estilos.css?v=5">
+<link rel="stylesheet" href="css/estilos.css?v=6">
 </head>
 <body class="cargando">
 
@@ -54,6 +54,7 @@
 
         <div id="inicio-reloj"></div>
         <div id="inicio-recibidor" class="pila"></div>
+        <div id="inicio-niveles"></div>
 
         <div id="panel-msg" class="msg error" role="alert" hidden></div>
 
@@ -87,7 +88,7 @@
       <div class="seccion" id="sec-niveles" hidden>
         <section class="ban">
           <h3>Avanza nivel por nivel</h3>
-          <div class="ban-sub">Solo está habilitado tu nivel actual. Los demás tienen candado hasta que avances.</div>
+          <div class="ban-sub">Completa un nivel para habilitar el siguiente. Cuando completes el primero, puedes volver a él en una vuelta nueva y estar en varios niveles a la vez.</div>
         </section>
         <div class="msg info aviso-niveles">Subir de nivel depende de que tu red siga creciendo y no está garantizado. Lee las <a href="reglas.html" target="_blank" rel="noopener">Reglas y políticas</a>.</div>
         <div id="niveles-aviso" hidden></div>
@@ -131,9 +132,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.50.0/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=5"></script>
-<script src="js/comun.js?v=5"></script>
-<script src="js/reloj.js?v=5"></script>
-<script src="js/panel.js?v=5"></script>
+<script src="js/config.js?v=6"></script>
+<script src="js/comun.js?v=6"></script>
+<script src="js/reloj.js?v=6"></script>
+<script src="js/panel.js?v=6"></script>
 </body>
 </html>

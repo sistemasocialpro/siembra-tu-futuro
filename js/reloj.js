@@ -37,7 +37,7 @@ function crearReloj(datos, op) {
   }
 
   const cabecera = (texto) => el('div', { class: 'reloj-cab' },
-    el('span', { class: 'reloj-etiqueta', text: 'Tu reloj · Nivel ' + datos.nivel_nombre + ' · ' + (NOMBRE_POSICION[datos.posicion] || '') }),
+    el('span', { class: 'reloj-etiqueta', text: 'Tu reloj · Nivel ' + datos.nivel_nombre + (datos.vuelta ? ' - vuelta ' + datos.vuelta : '') + ' · ' + (NOMBRE_POSICION[datos.posicion] || '') }),
     texto ? el('span', { class: 'reloj-fase', text: texto }) : null
   );
   const msg = el('div', { class: 'msg error', role: 'alert', hidden: true });

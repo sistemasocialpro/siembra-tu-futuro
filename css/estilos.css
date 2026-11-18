@@ -308,6 +308,20 @@ a.btn { display: inline-block; text-align: center; text-decoration: none; }
   width: 100%; padding: 9px; margin-top: auto; background: #e5e7eb; color: #6b7280;
   border: 0; border-radius: 12px; font-weight: 600; font-size: 15px;
 }
+/* Vueltas: un nivel puede tener varios botones (uno por vuelta) */
+.nivel-botones { width: 100%; margin-top: auto; display: flex; flex-direction: column; gap: 6px; }
+.nivel-botones .btn-nivel, .nivel-botones .btn-bloqueado { margin-top: 0; }
+a.btn-nivel { display: block; text-align: center; text-decoration: none; }
+.nivel-hecho { font-size: 12px; font-weight: 600; color: var(--verde); }
+
+/* Inicio: mis niveles con su vuelta */
+#inicio-niveles:empty { display: none; }
+.mis-niveles { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; }
+.mis-niveles-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--linea); }
+.mis-niveles-item:first-child { border-top: 0; }
+.nivel-punto { width: 14px; height: 14px; border-radius: 50%; flex: none; }
+.mis-niveles-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.mis-niveles-texto .mut { font-size: 13px; }
 
 /* ---------- Mi grupo ---------- */
 #grupo-contenido { display: flex; flex-direction: column; gap: 14px; }
