@@ -282,6 +282,17 @@ function estadoCasilla(p) {
 
 // posiciones: [{ posicion, user_id, nombre_usuario, estado, ... }]
 // opciones: { miId, acciones(p) -> Element|null }
+// Nombre de usuario que puede pasar de línea después de cada "_" (juan_ / perez_ / lopez),
+// en lugar de cortarse a mitad de palabra en las casillas angostas del celular.
+function nombreConCortes(texto) {
+  const partes = [];
+  String(texto).split('_').forEach((trozo, i, todos) => {
+    partes.push(i < todos.length - 1 ? trozo + '_' : trozo);
+    if (i < todos.length - 1) partes.push(document.createElement('wbr'));
+  });
+  return partes;
+}
+
 function crearMapaGrupo(posiciones, opciones) {
   const op = opciones || {};
   const porPos = {};
@@ -300,7 +311,7 @@ function crearMapaGrupo(posiciones, opciones) {
       el('div', { class: 'cas-rol', text: NOMBRE_POSICION[pos].toUpperCase() }),
       // En celular el mapa es angosto: se muestra el nombre corto (RECIB., CONST. 1, REG. 1)
       el('div', { class: 'cas-rol-corto', 'aria-hidden': 'true', text: NOMBRE_CORTO_POSICION[pos] }),
-      el('div', { class: 'cas-nombre', text: p.user_id ? (p.nombre_usuario || '—') : 'Esperando...' }),
+      el('div', { class: 'cas-nombre' }, p.user_id ? nombreConCortes(p.nombre_usuario || '—') : 'Esperando…'),
       el('div', { class: 'cas-estado', text: estadoCasilla(p) }),
       esYo ? el('div', { class: 'cas-tu', text: 'TÚ' }) : null
     );

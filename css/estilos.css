@@ -603,15 +603,19 @@ body.trabajando, body.trabajando button { cursor: wait; }
   /* Mapa en celular: la MISMA forma que en computadora (5 columnas con líneas), compacta
      para que quepa en 360px de ancho; el rol se muestra corto (RECIB., CONST. 1, REG. 1) */
   .mapa {
-    --gx: 7px; --gy: 12px; --bw: 2px;
+    --gx: 5px; --gy: 12px; --bw: 2px;
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    padding: 12px 8px; border-radius: 16px;
+    padding: 10px 4px; border-radius: 16px;
+    /* Usa casi todo el ancho de la pantalla (4px a cada lado) para dar más lugar a los nombres */
+    margin-left: -12px; margin-right: -12px;
   }
-  .casilla { padding: 6px 2px; border-radius: 10px; gap: 1px; }
+  .casilla { padding: 6px 2px; border-radius: 10px; gap: 2px; }
   .cas-rol { display: none; }
   .cas-rol-corto { display: block; }
-  .cas-nombre { font-size: 10px; line-height: 1.2; }
-  .cas-estado { font-size: 9px; line-height: 1.2; overflow-wrap: anywhere; }
+  /* Nombres legibles: 11px, cortan en los "_" (nombreConCortes) y solo si no queda otra, en cualquier letra */
+  .cas-nombre { font-size: 11px; font-weight: 700; letter-spacing: -.02em; line-height: 1.15; overflow-wrap: anywhere; }
+  .casilla.libre .cas-nombre { font-size: 9px; letter-spacing: -.03em; }
+  .cas-estado { font-size: 9px; line-height: 1.2; overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto; }
   .cas-tu { font-size: 9px; }
   .cas-acciones { gap: 3px; margin-top: 4px; }
   .cas-acciones .cb {
