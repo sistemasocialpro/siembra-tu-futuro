@@ -286,7 +286,7 @@
       el('span', { class: 'pill pill-amarilla', text: enEspera ? 'Pendiente de posición' : 'Sin lugar con tu patrocinador' }),
       el('h3', { text: enEspera ? 'Eres el ' + mr.numero + ' en espera' : 'Ya no eres referido activo' }),
       el('p', { class: 'mut', text: enEspera
-        ? 'Estás en la lista de espera de ' + mr.patrocinador + ' (su vuelta ' + mr.vuelta + '). Cuando uno de sus 2 referidos deje su lugar, lo tomarás automáticamente y empezará tu plazo de ' + mr.plazo_tarea + ' para hacer tu tarea.'
+        ? 'Estás en la lista de espera de ' + mr.patrocinador + ' (su vuelta ' + mr.vuelta + '). Cuando se libere uno de sus 2 lugares, ' + mr.patrocinador + ' elige quién lo toma; si no elige en 24 horas, entra automáticamente el 1.º en espera. Tu patrocinador también puede ubicarte en derrame o debajo de alguien de su red. Al entrar empieza tu plazo de ' + mr.plazo_tarea + ' para hacer tu tarea.'
         : mr.patrocinador + ' te quitó de sus 2 referidos. Puedes seguir participando: entra en el primer lugar libre.' }),
       enEspera ? el('p', { class: 'mut', text: 'Si no quieres esperar, entra ahora en el primer lugar libre del primer nivel:' }) : null,
       el('div', { class: 'botones' },
@@ -350,21 +350,98 @@
           : el('button', { type: 'button', class: 'bt-salir btn-chico', onclick: () => eliminarReferido(a, v.vuelta), text: 'Eliminar' })
       ));
     });
-    for (let i = v.activos.length; i < 2; i++) {
-      lista.appendChild(el('li', { class: 'ref-item ref-libre' },
-        el('span', { class: 'mut', text: 'Lugar libre: invita a alguien con tu enlace' })));
+    // (24) Lugares libres: si hay gente en espera, eliges quién lo toma (si no, entra el 1.º)
+    const lugares = v.lugares || [];
+    for (let i = v.activos.length, j = 0; i < 2; i++, j++) {
+      const lugar = v.espera.length ? lugares[j] : null;
+      lista.appendChild(el('li', { class: 'ref-item ref-libre' + (lugar ? ' ref-elegir' : '') },
+        el('span', { class: 'mut', text: lugar
+          ? 'Lugar libre: elige quién de tu lista de espera lo toma (hasta el ' + fechaHora(lugar.vence_en) + '). Si no eliges, entra automáticamente el 1.º en espera.'
+          : 'Lugar libre: invita a alguien con tu enlace' })));
     }
     const espera = el('ol', { class: 'ref-espera' });
     v.espera.forEach((e) => espera.appendChild(el('li', null,
-      el('b', { text: e.nombre_usuario }),
-      el('span', { class: 'mut', text: ' · registrado el ' + formatoFecha(e.registrado) }))));
+      el('div', null,
+        el('b', { text: e.nombre_usuario }),
+        el('span', { class: 'mut', text: ' · registrado el ' + formatoFecha(e.registrado) })),
+      el('div', { class: 'ref-botones' },
+        lugares.length
+          ? el('button', { type: 'button', class: 'btn btn-chico', onclick: () => elegirParaLugar(e, lugares[0]), text: 'Elegir para este lugar' })
+          : null,
+        el('button', { type: 'button', class: 'bo btn-chico', onclick: () => ubicarEnDerrame(e), text: 'Ubicar en derrame' }),
+        el('button', { type: 'button', class: 'bo btn-chico', onclick: () => ubicarDebajoDe(e), text: 'Ubicar debajo de…' })
+      ))));
     return el('section', { class: 'card ref-card' },
       el('h3', { text: 'Mis referidos - vuelta ' + v.vuelta }),
       lista,
       el('h4', { class: 'ref-sub', text: 'En espera' + (v.espera.length ? ' (' + v.espera.length + ')' : '') }),
       v.espera.length ? espera : el('p', { class: 'mut', text: 'Nadie en espera.' }),
-      el('p', { class: 'ayuda ref-nota', text: 'Si eliminas a un referido, el 1ro en espera toma su lugar automáticamente.' })
+      el('p', { class: 'ayuda ref-nota', text: 'Si eliminas a un referido, eliges quién de tu lista de espera toma su lugar; si no eliges en 24 horas, entra automáticamente el 1ro en espera. Nunca se saca a nadie: solo se usan lugares libres.' })
     );
+  }
+
+  function fechaHora(iso) {
+    return new Date(iso).toLocaleString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  }
+
+  async function elegirParaLugar(e, lugar) {
+    const si = await confirmar({
+      titulo: 'Elegir para este lugar',
+      texto: [el('p', { class: 'modal-p' }, el('b', { text: e.nombre_usuario }), ' tomará tu lugar libre y empezará su plazo para hacer la tarea.')],
+      boton: 'Sí, elegir'
+    });
+    if (!si) return;
+    const { error } = await sb.rpc('elegir_para_lugar', { p_lugar_id: lugar.id, p_user_id: e.user_id });
+    if (error) return aviso(traducirErrorDatos(error));
+    aviso(e.nombre_usuario + ' tomó tu lugar libre.', 'ok');
+    refrescar();
+    actualizarReferidos();
+  }
+
+  async function ubicarEnDerrame(e) {
+    const si = await confirmar({
+      titulo: 'Ubicar en derrame',
+      texto: [
+        el('p', { class: 'modal-p' }, el('b', { text: e.nombre_usuario }), ' entrará en el primer lugar libre del primer nivel y saldrá de tu lista de espera.'),
+        el('div', { class: 'modal-nota', text: 'Ya no te seguirá a ti. Su plazo para hacer la tarea empieza en cuanto entre.' })
+      ],
+      boton: 'Sí, ubicar en derrame'
+    });
+    if (!si) return;
+    const { data, error } = await sb.rpc('ubicar_en_derrame', { p_user_id: e.user_id });
+    if (error) return aviso(traducirErrorDatos(error));
+    aviso(data && data.resultado === 'colocado'
+      ? e.nombre_usuario + ' entró en el nivel ' + data.nivel + ' como ' + (NOMBRE_POSICION[data.posicion] || 'regalador') + '.'
+      : 'No hay lugares libres en este momento: ' + e.nombre_usuario + ' quedó en la lista de espera del nivel.', data && data.resultado === 'colocado' ? 'ok' : 'info');
+    refrescar();
+    actualizarReferidos();
+  }
+
+  async function ubicarDebajoDe(e) {
+    const { data: candidatos, error: errC } = await sb.rpc('candidatos_ubicar');
+    if (errC) return aviso(traducirErrorDatos(errC));
+    const elegido = await elegirDeLista({
+      titulo: 'Ubicar a ' + e.nombre_usuario + ' debajo de…',
+      sub: 'Solo personas de tu red (tus referidos y los de ellos) con un lugar de referido libre. ' + e.nombre_usuario + ' pasará a ser su referido y lo seguirá.',
+      items: (candidatos || []).map((c) => ({
+        titulo: c.nombre_usuario,
+        sub: (c.nivel_red === 1 ? 'Tu referido' : 'Referido de ' + c.via) + ' · ' + c.libres + (c.libres === 1 ? ' lugar libre' : ' lugares libres'),
+        valor: c
+      })),
+      vacio: 'Nadie de tu red tiene un lugar de referido libre en este momento.'
+    });
+    if (!elegido) return;
+    const si = await confirmar({
+      titulo: 'Ubicar debajo de ' + elegido.nombre_usuario,
+      texto: [el('p', { class: 'modal-p' }, el('b', { text: e.nombre_usuario }), ' pasará a ser referido de ', el('b', { text: elegido.nombre_usuario }), ' y lo seguirá.')],
+      boton: 'Sí, ubicar'
+    });
+    if (!si) return;
+    const { error } = await sb.rpc('ubicar_debajo_de', { p_user_id: e.user_id, p_destino: elegido.user_id });
+    if (error) return aviso(traducirErrorDatos(error));
+    aviso(e.nombre_usuario + ' ahora es referido de ' + elegido.nombre_usuario + '.', 'ok');
+    refrescar();
+    actualizarReferidos();
   }
 
   async function cargarReferidosYReserva() {
