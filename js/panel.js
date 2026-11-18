@@ -313,6 +313,32 @@
     actualizarBadge();
   }
 
+  // (26) Quien no es fundador repite como regalador: debajo de quien sigue o por derrame
+  async function repetirComoRegalador(nivel) {
+    const si = await confirmar({
+      titulo: 'Repetir el nivel ' + nivel.nombre,
+      texto: [
+        el('p', { class: 'modal-p' }, 'Entras como ', el('b', { text: 'regalador' }), ' en el nivel ', el('b', { text: nivel.nombre }),
+          ': debajo de la persona que sigues si es constructor en ese nivel y tiene lugar; si no, en el primer lugar libre (derrame).'),
+        el('div', { class: 'modal-nota', text: 'Tienes tu plazo para hacer la tarea. Cuando subas a constructor, tus referidos que te siguen entran debajo de ti; ' +
+          'si no tienes referidos disponibles, invita a 2 personas nuevas con tu enlace: serán tu equipo de repeticiones y no cuentan en tu límite de 2. ' +
+          'Si no hay lugar libre, quedas en la lista de espera del nivel. No se pide ni se recibe dinero.' })
+      ],
+      boton: 'Sí, repetir este nivel'
+    });
+    if (!si) return;
+    const { data, error } = await sb.rpc('repetir_nivel', { p_nivel_id: nivel.id });
+    if (error) return aviso(traducirErrorDatos(error));
+    if (data.resultado === 'lista_espera') {
+      aviso('No hay un lugar libre en el nivel ' + data.nivel + ': quedaste en su lista de espera.', 'ok');
+      refrescar();
+    } else {
+      aviso('¡Listo! Repites el nivel ' + data.nivel + ' como ' + NOMBRE_POSICION[data.posicion] + '. Ya corre tu plazo para hacer la tarea.', 'ok');
+      location.hash = enlaceGrupo(data.nivel_id);
+    }
+    actualizarBadge();
+  }
+
   // ---------- Reserva de referidos (SQL 23) ----------
   // mi_reserva(): si estoy en la lista de espera de mi patrocinador ("Eres el N en espera")
   // o si me quitó de sus referidos. Sin el SQL 23 devuelve null y no se muestra nada.
@@ -632,7 +658,7 @@
         });
         cn.appendChild(el('section', { class: 'card' },
           el('h3', { text: 'Mis niveles' }),
-          el('div', { class: 'mut', text: 'Tienes una posición activa por nivel. Desde Niveles puedes repetir niveles inferiores con tu equipo.' }),
+          el('div', { class: 'mut', text: 'Tienes una posición activa por nivel. Desde Niveles puedes repetir niveles inferiores.' }),
           lista));
       }
       // Reserva de referidos: "Eres el N en espera" y "Mis referidos"
@@ -683,6 +709,8 @@
       // (25) Niveles inferiores al más alto que alcancé, sin posición mía: "Repetir con mi equipo"
       const repetibles = new Set((rRep.data && rRep.data.niveles) || []);
       const esperaRepetir = rRep.data && rRep.data.espera_hasta;
+      // (26) El fundador repite con su equipo completo; los demás entran como regalador
+      const conEquipo = !!(rRep.data && rRep.data.modo === 'equipo');
       const mias = datos.posiciones;
       const espera = datos.espera;
       const ciclos = datos.ciclos;
@@ -718,7 +746,9 @@
         } else if (repetibles.has(n.id)) {
           botones.push(esperaRepetir
             ? el('button', { type: 'button', class: 'btn-bloqueado', disabled: true, text: '⏳ Repetir desde el ' + fechaHora(esperaRepetir) })
-            : el('button', { type: 'button', class: 'btn btn-nivel', onclick: () => repetirConEquipo(n), text: 'Repetir con mi equipo' }));
+            : el('button', { type: 'button', class: 'btn btn-nivel',
+                onclick: () => (conEquipo ? repetirConEquipo(n) : repetirComoRegalador(n)),
+                text: conEquipo ? 'Repetir con mi equipo' : 'Repetir este nivel' }));
         } else if (!completados.has(n.id) && habilitado(n)) {
           botones.push(porDerrame && !nivelAnterior(niveles, n)
             ? el('button', { type: 'button', class: 'btn btn-nivel', onclick: entrarPorDerrame, text: 'Entrar por derrame' })
