@@ -6,6 +6,7 @@ diseno/
 # Notas internas del proyecto
 CLAUDE.md
 .claude/
+Claude outputs/
 notas*
 *.txt
 

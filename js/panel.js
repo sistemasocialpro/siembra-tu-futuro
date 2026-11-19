@@ -364,13 +364,6 @@
     actualizarBadge();
   }
 
-  async function ahoraNo(av, tarjeta) {
-    const { error } = await sb.rpc('responder_aviso_seguir', { p_aviso_id: av.id, p_acepta: false });
-    if (error) return aviso(traducirErrorDatos(error));
-    tarjeta.remove();
-    aviso('Listo. Si cambias de idea, puedes seguir a ' + av.patrocinador + ' desde Niveles.', 'ok');
-  }
-
   // Ícono del brote (SVG fijo del código, no es texto de usuarios)
   function iconoBrote() {
     const NS = 'http://www.w3.org/2000/svg';
@@ -405,16 +398,16 @@
           ? nom + ' ya es constructor en el ' + nivelY + ' y tiene un lugar libre. Si aceptas, entras ahora debajo de él como regalador y empiezan tus 4 horas.'
           : 'Si aceptas, quedas anotado. Cuando ' + nom + ' suba a constructor en el ' + nivelY + ', entrarás debajo de él como regalador y empezarán tus 4 horas.' })
       ),
+      // (28) Solo "Seguir": la tarjeta queda hasta que acepta o hasta que otra persona ocupa ese lugar
       el('div', { class: 'as-botones' },
-        el('button', { type: 'button', class: 'btn', onclick: () => seguirPatrocinador(av), text: 'Seguir a ' + nom + ' en el nivel ' + av.nivel_orden }),
-        el('button', { type: 'button', class: 'bo', onclick: () => ahoraNo(av, tarjeta), text: 'Ahora no' })
+        el('button', { type: 'button', class: 'btn', onclick: () => seguirPatrocinador(av), text: 'Seguir a ' + nom + ' en el nivel ' + av.nivel_orden })
       )
     );
     return tarjeta;
   }
 
   async function cargarAvisosSeguir() {
-    const avisos = (await leerAvisosSeguir()).filter((a) => a.estado === 'pendiente');
+    const avisos = (await leerAvisosSeguir()).filter((a) => a.estado === 'pendiente' || a.estado === 'oculto');
     const caja = $('inicio-avisos');
     vaciar(caja);
     avisos.forEach((a) => caja.appendChild(tarjetaAvisoSeguir(a)));
