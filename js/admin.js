@@ -1243,9 +1243,9 @@
     $('salud-limpieza').textContent = (s.limpieza_programada
       ? 'Limpieza automática: todos los días a las 03:30. '
       : 'La limpieza automática NO está programada: activa pg_cron (Database → Extensions) y vuelve a ejecutar el SQL 34. ') +
-      'Se borran las notificaciones leídas de más de ' + Number(s.dias_notif_leidas) + ' días y las sin leer de más de ' + Number(s.dias_notif_no_leidas) + ' días. ' +
+      'Se borran las notificaciones de más de ' + Number(s.dias_borrar_notificaciones) + ' días, salvo los avisos que todavía piden una acción. ' +
       (u ? 'Última: ' + fechaHoraLarga(u.ejecutado_en) + ' (' + (u.origen === 'administrador' ? 'a mano' : 'automática') + '): ' +
-        u.borradas_leidas + ' leídas y ' + u.borradas_no_leidas + ' sin leer borradas.' : 'Todavía no se hizo ninguna limpieza.');
+        formatoNumero(u.borradas || 0) + ' borradas y ' + formatoNumero(u.conservadas || 0) + ' avisos pendientes conservados.' : 'Todavía no se hizo ninguna limpieza.');
   }
   $('btn-salud-actualizar').addEventListener('click', cargarSalud);
 
@@ -1253,19 +1253,17 @@
     e.preventDefault();
     const m = $('mant-msg');
     m.hidden = true;
-    const v = {};
-    for (const k of ['dias_notif_leidas', 'dias_notif_no_leidas', 'limite_bd_mb']) v[k] = Number(String($('cfg-' + k).value).replace(',', '.'));
-    if (![v.dias_notif_leidas, v.dias_notif_no_leidas].every((n) => isFinite(n) && n >= 7 && n <= 3650)) {
-      m.textContent = 'Los días deben estar entre 7 y 3650.'; m.hidden = false; return;
-    }
-    if (!isFinite(v.limite_bd_mb) || v.limite_bd_mb < 100) { m.textContent = 'El límite debe ser de al menos 100 MB.'; m.hidden = false; return; }
+    const dias = Number(String($('cfg-dias_borrar_notificaciones').value).replace(',', '.'));
+    const limite = Number(String($('cfg-limite_bd_mb').value).replace(',', '.'));
+    if (!isFinite(dias) || dias < 7 || dias > 3650) { m.textContent = 'Los días deben estar entre 7 y 3650.'; m.hidden = false; return; }
+    if (!isFinite(limite) || limite < 100) { m.textContent = 'El límite debe ser de al menos 100 MB.'; m.hidden = false; return; }
     const si = await confirmar({
       titulo: 'Guardar limpieza automática',
-      texto: 'Leídas: ' + v.dias_notif_leidas + ' días · Sin leer: ' + v.dias_notif_no_leidas + ' días · Límite del plan: ' + v.limite_bd_mb + ' MB.',
+      texto: 'Se borrarán las notificaciones de más de ' + dias + ' días (salvo los avisos que todavía piden una acción). Límite del plan: ' + limite + ' MB.',
       boton: 'Guardar'
     });
     if (!si) return;
-    const ok = await ejecutar(() => sb.rpc('admin_guardar_mantenimiento', { p_dias_leidas: v.dias_notif_leidas, p_dias_no_leidas: v.dias_notif_no_leidas, p_limite_mb: v.limite_bd_mb }),
+    const ok = await ejecutar(() => sb.rpc('admin_guardar_mantenimiento', { p_dias: dias, p_limite_mb: limite }),
       'Limpieza automática guardada.');
     if (ok) cargarSalud();
   });
@@ -1273,12 +1271,12 @@
   $('btn-limpiar-ahora').addEventListener('click', async () => {
     const si = await confirmar({
       titulo: 'Limpiar ahora',
-      texto: 'Se borran ya las notificaciones viejas (las mismas que borra la limpieza diaria). No se toca el historial, los tableros ni el Registro.',
+      texto: 'Se borran ya las notificaciones viejas (las mismas que borra la limpieza diaria), salvo los avisos que todavía piden una acción. No se tocan el historial, los tableros, las posiciones, las tareas ni el Registro.',
       boton: 'Limpiar ahora'
     });
     if (!si) return;
     const ok = await ejecutar(() => sb.rpc('admin_limpiar_ahora'),
-      (d) => 'Limpieza hecha: ' + d.borradas_leidas + ' leídas y ' + d.borradas_no_leidas + ' sin leer borradas.');
+      (d) => 'Limpieza hecha: ' + formatoNumero(d.borradas) + ' notificaciones borradas y ' + formatoNumero(d.conservadas) + ' avisos pendientes conservados.');
     if (ok) cargarSalud();
   });
 
