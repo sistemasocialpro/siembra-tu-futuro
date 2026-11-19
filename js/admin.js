@@ -102,6 +102,16 @@
   }
   function nombreDe(userId) { return (perfilPorId[userId] || {}).nombre_usuario; }
 
+  // (34) Trae solo los perfiles que faltan (de a 200), para no cargar a todos los usuarios
+  async function cargarNombres(ids) {
+    const faltan = [...new Set(ids.filter((id) => id && !perfilPorId[id]))];
+    for (let i = 0; i < faltan.length; i += 200) {
+      const { data, error } = await sb.from('perfiles').select('id, nombre_usuario, nombre_completo, invitado_por').in('id', faltan.slice(i, i + 200));
+      if (error) throw error;
+      (data || []).forEach((p) => { perfilPorId[p.id] = Object.assign(perfilPorId[p.id] || {}, p); });
+    }
+  }
+
   async function actualizarBadgeEspera() {
     const { count, error } = await sb.from('lista_espera').select('user_id', { count: 'exact', head: true });
     if (error) return;
@@ -836,7 +846,12 @@
   // GRUPOS
   // =====================================================================
   const filtro = $('filtro-nivel');
-  filtro.addEventListener('change', cargarGrupos);
+  const GRUPOS_POR_PAGINA = 20;
+  let gPagina = 0;
+  filtro.addEventListener('change', () => { gPagina = 0; cargarGrupos(); });
+  $('filtro-estado-grupos').addEventListener('change', () => { gPagina = 0; cargarGrupos(); });
+  $('grupos-ant').addEventListener('click', () => { if (gPagina > 0) { gPagina--; cargarGrupos(); } });
+  $('grupos-sig').addEventListener('click', () => { gPagina++; cargarGrupos(); });
 
   const COLUMNAS_POS = 'id, grupo_id, posicion, cuelga_de, user_id, estado, origen, reservada_en, tarea_hecha_en, ascendido_en, asignado_en';
 
@@ -847,15 +862,25 @@
     try {
       await cargarNiveles();
       const nivelId = Number(filtro.value);
-      const [rg, rp] = await Promise.all([
-        sb.from('grupos').select('id, estado, creado_en').eq('nivel_id', nivelId).order('creado_en', { ascending: false }),
-        sb.from('posiciones').select(COLUMNAS_POS).eq('nivel_id', nivelId),
-        cargarPerfiles()
-      ]);
+      const est = $('filtro-estado-grupos').value;
+      const desde = gPagina * GRUPOS_POR_PAGINA;
+      // (34) Solo una página de grupos y las casillas de esos grupos (índices: nivel+estado+fecha y grupo)
+      let qg = sb.from('grupos').select('id, estado, creado_en', { count: 'exact' }).eq('nivel_id', nivelId);
+      if (est !== 'todos') qg = qg.eq('estado', est);
+      const rg = await qg.order('creado_en', { ascending: false }).range(desde, desde + GRUPOS_POR_PAGINA - 1);
       if (rg.error) throw rg.error;
+      const ids = rg.data.map((g) => g.id);
+      const rp = ids.length ? await sb.from('posiciones').select(COLUMNAS_POS).in('grupo_id', ids) : { data: [] };
       if (rp.error) throw rp.error;
+      await cargarNombres(rp.data.map((p) => p.user_id));
       if (turno !== turnoGrupos) return;
-      pintarGrupos(nivelId, rg.data, rp.data);
+      const total = rg.count || 0;
+      const paginas = Math.max(1, Math.ceil(total / GRUPOS_POR_PAGINA));
+      $('grupos-info').textContent = total + (total === 1 ? ' grupo' : ' grupos') + ' · página ' + (gPagina + 1) + ' de ' + paginas;
+      $('grupos-ant').disabled = gPagina === 0;
+      $('grupos-sig').disabled = gPagina + 1 >= paginas;
+      $('grupos-pag').hidden = total <= GRUPOS_POR_PAGINA;
+      pintarGrupos(nivelId, rg.data, rp.data, total, desde, est);
     } catch (err) {
       if (turno !== turnoGrupos) return;
       vaciar(cont);
@@ -863,20 +888,21 @@
     }
   }
 
-  function pintarGrupos(nivelId, grupos, posiciones) {
+  function pintarGrupos(nivelId, grupos, posiciones, total, desde, est) {
     const cont = $('lista-grupos');
     vaciar(cont);
 
     if (!grupos.length) {
       cont.appendChild(el('section', { class: 'card aviso-vacio' },
-        el('h3', { text: 'No hay grupos en el nivel ' + nombreNivel(nivelId) }),
-        el('p', { class: 'mut', text: 'Usa "Crear grupo fundador" para armar el primero.' })
+        el('h3', { text: 'No hay grupos ' + (est === 'activo' ? 'activos ' : est === 'completado' ? 'completados ' : '') + 'en el nivel ' + nombreNivel(nivelId) }),
+        el('p', { class: 'mut', text: est === 'completado' ? 'Cuando un grupo recibe sus 4 tareas se divide y aparece aquí.' : 'Usa "Crear grupo fundador" para armar el primero.' })
       ));
       return;
     }
 
     grupos.forEach((g, i) => {
-      const numero = grupos.length - i;
+      // Número dentro del filtro elegido (el más nuevo tiene el número más alto)
+      const numero = total - (desde + i);
       const pos = posiciones
         .filter((p) => p.grupo_id === g.id)
         .map((p) => Object.assign({}, p, { nombre_usuario: nombreDe(p.user_id) }));
@@ -1076,11 +1102,10 @@
     const tb = $('tabla-espera');
     try {
       await cargarNiveles();
-      const [r] = await Promise.all([
-        sb.from('lista_espera').select('user_id, nivel_id, creado_en').order('creado_en'),
-        cargarPerfiles()
-      ]);
+      const r = await sb.from('lista_espera').select('user_id, nivel_id, creado_en').order('creado_en').limit(500);
       if (r.error) throw r.error;
+      await cargarNombres(r.data.map((f) => f.user_id));
+      await cargarNombres(r.data.map((f) => (perfilPorId[f.user_id] || {}).invitado_por));
       if (turno !== turnoEspera) return;
 
       // Por nivel (según niveles.orden) y, dentro del nivel, por antigüedad
@@ -1119,32 +1144,15 @@
     if (ocupado) return;
     const nombre = perfil.nombre_usuario || 'esta persona';
     let items;
-    const numero = {};
     try {
-      const [rg, rp] = await Promise.all([
-        sb.from('grupos').select('id, estado, creado_en').eq('nivel_id', fila.nivel_id).order('creado_en'),
-        sb.from('posiciones').select(COLUMNAS_POS).eq('nivel_id', fila.nivel_id)
-      ]);
-      if (rg.error) throw rg.error;
-      if (rp.error) throw rp.error;
-      rg.data.forEach((g, i) => { numero[g.id] = i + 1; });
-      const porGrupoPos = {};
-      rp.data.forEach((p) => { porGrupoPos[p.grupo_id + ':' + p.posicion] = p; });
-
-      const activos = new Set(rg.data.filter((g) => g.estado === 'activo').map((g) => g.id));
-      items = rp.data
-        .filter((p) => !p.user_id && activos.has(p.grupo_id))
-        .sort((a, b) => (numero[a.grupo_id] - numero[b.grupo_id]) || (POSICIONES.indexOf(a.posicion) - POSICIONES.indexOf(b.posicion)))
-        .map((p) => {
-          const padre = p.cuelga_de ? porGrupoPos[p.grupo_id + ':' + p.cuelga_de] : null;
-          return {
-            titulo: 'Grupo #' + numero[p.grupo_id] + ' · ' + NOMBRE_POSICION[p.posicion],
-            sub: padre
-              ? 'Cuelga de ' + NOMBRE_POSICION[p.cuelga_de] + ' (' + (padre.user_id ? (nombreDe(padre.user_id) || '—') : 'libre') + ')'
-              : 'Centro del grupo',
-            valor: p
-          };
-        });
+      // (34) Solo las casillas libres que se pueden usar (grupo activo y con alguien arriba)
+      const { data, error } = await sb.rpc('admin_casillas_libres', { p_nivel_id: fila.nivel_id });
+      if (error) throw error;
+      items = (data || []).map((c) => ({
+        titulo: NOMBRE_POSICION[c.posicion] + ' · grupo de ' + (c.recibidor || 'recibidor libre'),
+        sub: c.debajo_de ? 'Debajo de ' + c.debajo_de : 'Centro del grupo',
+        valor: { id: c.posicion_id, posicion: c.posicion, grupo_id: c.grupo_id, recibidor: c.recibidor }
+      }));
     } catch (err) {
       return aviso(traducirErrorDatos(err));
     }
@@ -1161,7 +1169,7 @@
     const si = await confirmar({
       titulo: 'Confirmar asignación',
       texto: ['¿Asignar a ', el('b', { text: nombre }), ' como ', el('b', { text: NOMBRE_POSICION[pos.posicion] }),
-        ' en el Grupo #' + numero[pos.grupo_id] + ' (' + nombreNivel(fila.nivel_id) + ')?'],
+        ' en el grupo de ' + (pos.recibidor || 'recibidor libre') + ' (' + nombreNivel(fila.nivel_id) + ')?'],
       extra: el('label', { class: 'check', for: 'chk-relojes' }, chk,
         el('span', { text: 'Con relojes, igual que si hubiera entrado al tocar Participar (regalador: plazo para la tarea; constructor: plazo para invitar a 2 personas; el recibidor nunca tiene relojes).' })),
       boton: 'Asignar'
@@ -1192,7 +1200,87 @@
     chk.checked = !exige || Number(exige.valor) !== 0;
     cargarDiasNivel();
     cargarEnlaces();
+    cargarSalud();
   }
+
+  // (34) Salud del sistema
+  const mb = (b) => (Number(b) / 1048576).toLocaleString('es-EC', { maximumFractionDigits: 1 }) + ' MB';
+  async function cargarSalud() {
+    const { data: s, error } = await sb.rpc('admin_salud_sistema');
+    const avisoS = $('salud-aviso');
+    if (error) {
+      $('salud-mb').textContent = '—';
+      avisoS.className = 'msg error';
+      avisoS.textContent = 'No se pudo leer la salud del sistema. ' + traducirErrorDatos(error);
+      avisoS.hidden = false;
+      return;
+    }
+    const pct = Number(s.porcentaje) || 0;
+    $('salud-mb').textContent = mb(s.bytes);
+    $('salud-de').textContent = 'de ' + formatoNumero(s.limite_mb) + ' MB (' + pct.toLocaleString('es-EC') + '%)';
+    const barra = $('salud-barra');
+    barra.style.width = Math.min(100, pct) + '%';
+    barra.className = pct >= 90 ? 'rojo' : pct >= 70 ? 'amarillo' : '';
+    if (pct >= 70) {
+      avisoS.className = 'msg ' + (pct >= 90 ? 'error' : 'aviso-amarillo');
+      avisoS.textContent = 'La base de datos usa el ' + pct.toLocaleString('es-EC') + '% del límite del plan (' + formatoNumero(s.limite_mb) +
+        ' MB). Revisa las tablas que más ocupan, borra respaldos viejos (tablas *_respaldo_…), baja los días de la limpieza o pasa al plan Pro.';
+      avisoS.hidden = false;
+    } else {
+      avisoS.hidden = true;
+    }
+    const tablas = $('salud-tablas');
+    vaciar(tablas);
+    s.tablas.forEach((t) => tablas.appendChild(el('div', { class: 'salud-t' },
+      el('b', { text: formatoNumero(t.filas) }), el('span', { text: t.nombre }), el('span', { class: 'mut', text: mb(t.bytes) }))));
+    const g = $('salud-grandes');
+    vaciar(g);
+    g.appendChild(el('div', { class: 'tabla-wrap' }, el('table', { class: 'tabla' },
+      el('thead', null, el('tr', null, el('th', { text: 'Tabla' }), el('th', { class: 'num', text: 'Filas (aprox.)' }), el('th', { class: 'num', text: 'Tamaño' }))),
+      el('tbody', null, ...s.grandes.map((x) => el('tr', null, el('td', { class: 'mono', text: x.tabla }),
+        el('td', { class: 'num', text: formatoNumero(x.filas_aprox) }), el('td', { class: 'num', text: mb(x.bytes) })))))));
+    const u = s.ultima_limpieza;
+    $('salud-limpieza').textContent = (s.limpieza_programada
+      ? 'Limpieza automática: todos los días a las 03:30. '
+      : 'La limpieza automática NO está programada: activa pg_cron (Database → Extensions) y vuelve a ejecutar el SQL 34. ') +
+      'Se borran las notificaciones leídas de más de ' + Number(s.dias_notif_leidas) + ' días y las sin leer de más de ' + Number(s.dias_notif_no_leidas) + ' días. ' +
+      (u ? 'Última: ' + fechaHoraLarga(u.ejecutado_en) + ' (' + (u.origen === 'administrador' ? 'a mano' : 'automática') + '): ' +
+        u.borradas_leidas + ' leídas y ' + u.borradas_no_leidas + ' sin leer borradas.' : 'Todavía no se hizo ninguna limpieza.');
+  }
+  $('btn-salud-actualizar').addEventListener('click', cargarSalud);
+
+  $('form-mant').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const m = $('mant-msg');
+    m.hidden = true;
+    const v = {};
+    for (const k of ['dias_notif_leidas', 'dias_notif_no_leidas', 'limite_bd_mb']) v[k] = Number(String($('cfg-' + k).value).replace(',', '.'));
+    if (![v.dias_notif_leidas, v.dias_notif_no_leidas].every((n) => isFinite(n) && n >= 7 && n <= 3650)) {
+      m.textContent = 'Los días deben estar entre 7 y 3650.'; m.hidden = false; return;
+    }
+    if (!isFinite(v.limite_bd_mb) || v.limite_bd_mb < 100) { m.textContent = 'El límite debe ser de al menos 100 MB.'; m.hidden = false; return; }
+    const si = await confirmar({
+      titulo: 'Guardar limpieza automática',
+      texto: 'Leídas: ' + v.dias_notif_leidas + ' días · Sin leer: ' + v.dias_notif_no_leidas + ' días · Límite del plan: ' + v.limite_bd_mb + ' MB.',
+      boton: 'Guardar'
+    });
+    if (!si) return;
+    const ok = await ejecutar(() => sb.rpc('admin_guardar_mantenimiento', { p_dias_leidas: v.dias_notif_leidas, p_dias_no_leidas: v.dias_notif_no_leidas, p_limite_mb: v.limite_bd_mb }),
+      'Limpieza automática guardada.');
+    if (ok) cargarSalud();
+  });
+
+  $('btn-limpiar-ahora').addEventListener('click', async () => {
+    const si = await confirmar({
+      titulo: 'Limpiar ahora',
+      texto: 'Se borran ya las notificaciones viejas (las mismas que borra la limpieza diaria). No se toca el historial, los tableros ni el Registro.',
+      boton: 'Limpiar ahora'
+    });
+    if (!si) return;
+    const ok = await ejecutar(() => sb.rpc('admin_limpiar_ahora'),
+      (d) => 'Limpieza hecha: ' + d.borradas_leidas + ' leídas y ' + d.borradas_no_leidas + ' sin leer borradas.');
+    if (ok) cargarSalud();
+  });
 
   // ---------- Enlaces de soporte (tabla enlaces_soporte) ----------
   const CLAVES_ENLACE = ['telegram', 'linktree', 'whatsapp', 'correo'];

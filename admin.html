@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/estilos.css?v=26">
+<link rel="stylesheet" href="css/estilos.css?v=27">
 </head>
 <body class="cargando">
 
@@ -138,10 +138,24 @@
           <label class="lb lb-linea" for="filtro-nivel">Nivel
             <select class="in sel" id="filtro-nivel"></select>
           </label>
+          <label class="lb lb-linea" for="filtro-estado-grupos">Estado
+            <select class="in sel" id="filtro-estado-grupos">
+              <option value="activo">Activos</option>
+              <option value="completado">Completados</option>
+              <option value="todos">Todos</option>
+            </select>
+          </label>
           <button type="button" class="btn" id="btn-crear-grupo">Crear grupo fundador</button>
         </div>
         <p class="mut ayuda-orden">Orden para llenar cada grupo: primero <b>Recibidor</b> (centro), luego <b>Constructor 1</b> (izquierda), luego <b>Constructor 2</b> (derecha) y después los regaladores. Las personas que pones aquí no tienen relojes.</p>
         <div id="lista-grupos" aria-live="polite"><p class="mut">Cargando grupos…</p></div>
+        <div class="paginacion card" id="grupos-pag" hidden>
+          <span class="mut" id="grupos-info"></span>
+          <div class="paginacion-botones">
+            <button type="button" class="bo btn-chico" id="grupos-ant">← Anterior</button>
+            <button type="button" class="bo btn-chico" id="grupos-sig">Siguiente →</button>
+          </div>
+        </div>
       </section>
 
       <!-- Lista de espera -->
@@ -174,6 +188,47 @@
 
       <!-- Configuración -->
       <section id="pan-config" role="tabpanel" aria-labelledby="tab-config" class="seccion" hidden>
+        <!-- (34) Salud del sistema -->
+        <section class="card salud-card" aria-labelledby="salud-titulo">
+          <div class="salud-cab">
+            <h3 id="salud-titulo">Salud del sistema</h3>
+            <button type="button" class="bo btn-chico" id="btn-salud-actualizar">Actualizar</button>
+          </div>
+          <div id="salud-aviso" class="msg" role="alert" hidden></div>
+          <div class="salud-uso">
+            <div class="salud-num"><span class="mut">Tamaño de la base de datos</span><b id="salud-mb">…</b><span class="mut" id="salud-de"></span></div>
+            <div class="barra salud-barra" role="img" aria-label="Uso del límite de la base de datos"><span id="salud-barra"></span></div>
+          </div>
+          <div class="salud-tablas" id="salud-tablas"></div>
+          <details class="salud-grandes"><summary>Tablas que más ocupan</summary><div id="salud-grandes"></div></details>
+          <p class="mut salud-limpieza" id="salud-limpieza"></p>
+        </section>
+
+        <form class="card form-config" id="form-mant" novalidate>
+          <h3>Limpieza automática</h3>
+          <p class="mut">Cada día se borran las notificaciones viejas para que el sistema no se vuelva pesado. El historial de tareas, los tableros y el Registro de cambios <b>no</b> se borran.</p>
+          <div class="fila-3">
+            <div class="campo">
+              <label class="lb" for="cfg-dias_notif_leidas">Notificaciones leídas: días que se guardan</label>
+              <input class="in" id="cfg-dias_notif_leidas" type="number" inputmode="numeric" min="7" max="3650" step="1">
+            </div>
+            <div class="campo">
+              <label class="lb" for="cfg-dias_notif_no_leidas">Notificaciones sin leer: días que se guardan</label>
+              <input class="in" id="cfg-dias_notif_no_leidas" type="number" inputmode="numeric" min="7" max="3650" step="1">
+            </div>
+            <div class="campo">
+              <label class="lb" for="cfg-limite_bd_mb">Límite de la base del plan (MB)</label>
+              <input class="in" id="cfg-limite_bd_mb" type="number" inputmode="numeric" min="100" step="1">
+              <span class="ayuda">Plan gratis de Supabase: 500 MB. Se avisa al pasar el 70%.</span>
+            </div>
+          </div>
+          <div id="mant-msg" class="msg error" role="alert" hidden></div>
+          <div class="botones botones-fin">
+            <button type="button" class="bo" id="btn-limpiar-ahora">Limpiar ahora</button>
+            <button type="submit" class="btn">Guardar</button>
+          </div>
+        </form>
+
         <form class="card form-config" id="form-config" novalidate>
           <h3>Plazos del sistema</h3>
           <p class="mut">Se aplican de inmediato a todos los relojes. Puedes usar decimales: <b>0.05 horas = 3 minutos</b>, <b>0.0035 días ≈ 5 minutos</b>.</p>
@@ -280,8 +335,8 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.50.0/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=26"></script>
-<script src="js/comun.js?v=26"></script>
-<script src="js/admin.js?v=26"></script>
+<script src="js/config.js?v=27"></script>
+<script src="js/comun.js?v=27"></script>
+<script src="js/admin.js?v=27"></script>
 </body>
 </html>

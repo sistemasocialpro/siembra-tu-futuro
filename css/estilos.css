@@ -909,6 +909,28 @@ a.soporte-card:hover, a.soporte-card:focus-visible { border-color: var(--verde);
   .usuarios-filtro .sel { flex: 1; min-width: 0; }
 }
 
+/* Salud del sistema (Administración → Configuración) */
+.salud-card { display: flex; flex-direction: column; gap: 14px; border-top: 4px solid var(--verde); }
+.salud-cab { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.salud-cab h3 { margin: 0; }
+.salud-uso { display: flex; flex-direction: column; gap: 8px; }
+.salud-num { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.salud-num b { font-size: 26px; color: var(--verde-noche); }
+.salud-barra { flex: none; height: 14px; width: 100%; }
+.salud-barra span.amarillo { background: var(--amarillo); }
+.salud-barra span.rojo { background: #dc2626; }
+.salud-tablas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.salud-t { background: var(--input); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; }
+.salud-t b { font-size: 20px; color: var(--verde-noche); }
+.salud-t span { font-size: 12.5px; font-weight: 600; }
+.salud-grandes summary { cursor: pointer; font-weight: 700; color: var(--verde-osc); }
+.salud-grandes .tabla { font-size: 13px; margin-top: 8px; }
+.salud-grandes .tabla th, .salud-grandes .tabla td { padding: 8px 10px; white-space: normal; overflow-wrap: anywhere; }
+.salud-grandes .num { text-align: right; }
+.salud-limpieza { margin: 0; font-size: 13px; }
+.msg.aviso-amarillo { background: #fef9c3; color: #854d0e; border: 1px solid #facc15; }
+@media (max-width: 600px) { .salud-tablas { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
 /* Clave temporal / enlace de recuperación (Administración) */
 .clave-grande { font-family: ui-monospace, monospace; font-size: 30px; font-weight: 800; letter-spacing: .06em; text-align: center; background: var(--verde-noche); color: var(--amarillo); border-radius: 14px; padding: 16px; user-select: all; }
 .enviar-botones { display: flex; gap: 10px; flex-wrap: wrap; }
