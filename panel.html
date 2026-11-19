@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/estilos.css?v=23">
+<link rel="stylesheet" href="css/estilos.css?v=24">
 </head>
 <body class="cargando">
 
@@ -120,6 +120,15 @@
             <div class="ban-sub" id="historial-resumen">Cargando…</div>
           </div>
         </section>
+        <div class="card hist-filtros" id="historial-filtros" hidden>
+          <div class="chips" role="group" aria-label="Filtrar tableros">
+            <button type="button" class="chip on" data-tipo="todos" aria-pressed="true">Todos</button>
+            <button type="button" class="chip" data-tipo="normal" aria-pressed="false">Solo normales</button>
+            <button type="button" class="chip" data-tipo="repeticion" aria-pressed="false">Solo repeticiones</button>
+          </div>
+          <label class="hist-nivel-lb" for="historial-nivel"><span class="mut">Nivel</span>
+            <select class="in sel" id="historial-nivel"><option value="">Todos los niveles</option></select></label>
+        </div>
         <div id="historial-lista" class="pila" aria-live="polite"></div>
       </div>
 
@@ -151,9 +160,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.50.0/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=23"></script>
-<script src="js/comun.js?v=23"></script>
-<script src="js/reloj.js?v=23"></script>
-<script src="js/panel.js?v=23"></script>
+<script src="js/config.js?v=24"></script>
+<script src="js/comun.js?v=24"></script>
+<script src="js/reloj.js?v=24"></script>
+<script src="js/panel.js?v=24"></script>
 </body>
 </html>

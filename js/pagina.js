@@ -8,6 +8,7 @@ async function iniciarPagina(sb) {
   const session = await exigirParticipante(sb);
   if (!session) return null;
   document.body.classList.remove('cargando');
+  try { sessionStorage.setItem('stf-abierta', '1'); } catch (e) { /* sin sessionStorage */ }
 
   iniciarCerrarSesion(sb);
   iniciarMenuLateral();

@@ -432,6 +432,7 @@ button.cas-ico:hover { transform: scale(1.06); }
 button.cas-ico:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
 .cas-visto { background: var(--amarillo); color: var(--verde-noche); }
 button.cas-visto:hover { background: #fde047; }
+.cas-verificado { background: #16a34a; color: #fff; }
 .cas-eliminar { background: rgba(248, 113, 113, .16); color: #f87171; }
 button.cas-eliminar:hover { background: rgba(248, 113, 113, .28); }
 /* Grupo repetido: a quién sigue cada casilla y, más chico, quién la invitó */
@@ -863,6 +864,54 @@ a.soporte-card:hover, a.soporte-card:focus-visible { border-color: var(--verde);
 .registro-antes { color: #b91c1c; overflow-wrap: anywhere; }
 .registro-ahora { color: var(--verde-osc); font-weight: 700; overflow-wrap: anywhere; }
 .registro-flecha { color: var(--mut, #64748b); }
+
+/* Historial: filtros, tableros por nivel, tablero (ventana) y hoja para PDF */
+.hist-filtros { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.hist-filtros .chips { margin: 0; }
+.hist-filtros .chip { cursor: pointer; font: inherit; }
+.hist-nivel-lb { display: flex; align-items: center; gap: 8px; }
+.hist-nivel-lb .sel { width: auto; min-width: 200px; }
+.tab-lista { display: flex; flex-direction: column; }
+.tab-item { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; padding: 12px 0; border-top: 1px solid var(--borde); }
+.tab-info { display: flex; align-items: center; gap: 6px 12px; flex-wrap: wrap; }
+.tab-botones { display: flex; gap: 8px; flex-wrap: wrap; }
+.modal-tablero { max-width: 900px; }
+.tablero-cab { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.mapa-tablero .cas-iconos { margin-top: 6px; }
+@media (max-width: 600px) {
+  .hist-nivel-lb, .hist-nivel-lb .sel { width: 100%; }
+  .hist-nivel-lb .sel { min-width: 0; }
+  .tab-botones { width: 100%; }
+  .tab-botones .btn, .tab-botones .bo { flex: 1 1 0; }
+  .modal-tablero .modal-cuerpo { padding: 18px 12px; }
+  .mapa-tablero { margin-left: 0; margin-right: 0; }
+  .mapa-tablero .cas-ico { width: 24px; height: 24px; }
+  .mapa-tablero .cas-ico svg { width: 14px; height: 14px; }
+}
+#zona-impresion { display: none; }
+@media print {
+  body.imprimiendo > *:not(#zona-impresion) { display: none !important; }
+  body.imprimiendo #zona-impresion { display: block; color: #14301f; font-family: Montserrat, sans-serif; }
+  body.imprimiendo { background: #fff !important; }
+  #zona-impresion, #zona-impresion * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  #zona-impresion .imp-cab { display: flex; align-items: center; gap: 14px; border-bottom: 3px solid #facc15; padding-bottom: 12px; margin-bottom: 18px; }
+  #zona-impresion .imp-marca { font-size: 22px; font-weight: 800; color: #15803d; }
+  #zona-impresion .imp-sub { font-size: 13px; color: #4b6b57; }
+  #zona-impresion .imp-titulo { font-size: 24px; margin: 0 0 4px; }
+  #zona-impresion .imp-fecha { margin: 0 0 18px; color: #4b6b57; }
+  #zona-impresion .mapa { padding: 18px; gap: 18px 14px; grid-template-columns: repeat(5, minmax(0, 1fr)); break-inside: avoid; }
+  #zona-impresion .imp-tareas { font-size: 16px; margin-top: 16px; }
+  #zona-impresion .imp-pie { font-size: 11px; color: #4b6b57; margin-top: 28px; border-top: 1px solid #d1e7d9; padding-top: 8px; }
+  @page { size: A4 landscape; margin: 14mm; }
+}
+
+/* Perfil: acceso al historial */
+.acceso-historial { display: flex; align-items: center; gap: 14px; text-decoration: none; color: var(--texto); border: 2px solid transparent; }
+.acceso-historial:hover { border-color: var(--verde); }
+.acceso-historial-num { font-size: 32px; font-weight: 800; color: var(--verde-osc); min-width: 44px; text-align: center; }
+.acceso-historial-txt { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.acceso-historial-txt .mut { font-size: 13px; }
+.acceso-historial-ir { font-weight: 800; color: var(--verde-osc); margin-top: 4px; }
 
 /* Historial de niveles completados */
 .hn-card { display: flex; flex-direction: column; gap: 14px; }

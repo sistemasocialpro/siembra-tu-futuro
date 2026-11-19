@@ -27,6 +27,14 @@
     return;
   }
 
+  // Acceso "X tableros completados → Ver historial"
+  sb.rpc('mi_historial_niveles').then(({ data, error }) => {
+    if (error || !Array.isArray(data)) return;
+    $('acceso-historial-num').textContent = String(data.length);
+    $('acceso-historial-txt').textContent = data.length === 1 ? 'tablero completado' : 'tableros completados';
+    $('acceso-historial').hidden = false;
+  });
+
   const actual = resumen.nivel_actual;
   $('perfil-titulo').textContent = 'Perfil · ' + resumen.nombre_usuario;
   $('perfil-sub').textContent = 'Tu árbol de la comunidad · ' + (actual ? 'Nivel ' + actual.nombre : 'Sin nivel todavía');
