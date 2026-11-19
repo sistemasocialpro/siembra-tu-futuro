@@ -310,7 +310,7 @@ a.btn { display: inline-block; text-align: center; text-decoration: none; }
 }
 /* Vueltas: un nivel puede tener varios botones (uno por vuelta) */
 .nivel-botones { width: 100%; margin-top: auto; display: flex; flex-direction: column; gap: 6px; }
-.nivel-botones .btn-nivel, .nivel-botones .btn-bloqueado { margin-top: 0; }
+.nivel-botones .btn-nivel, .nivel-botones .btn-bloqueado { margin-top: 0; white-space: normal; overflow-wrap: anywhere; }
 a.btn-nivel { display: block; text-align: center; text-decoration: none; }
 .nivel-hecho { font-size: 12px; font-weight: 600; color: var(--verde); }
 
@@ -782,6 +782,24 @@ a.soporte-card:hover, a.soporte-card:focus-visible { border-color: var(--verde);
 .col-invitacion { flex: 2; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .col-invitacion .card-invitacion { flex: none; }
 .reserva-card { display: flex; flex-direction: column; gap: 8px; border: 2px solid var(--amarillo); }
+
+/* "¡X volvió a sembrar!": texto a la izquierda y botones a la derecha (en celular, en columna) */
+.aviso-seguir { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px 24px; align-items: center; border: 2px solid var(--amarillo); }
+.aviso-seguir h3 { margin: 0; }
+.as-texto { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.as-cab { display: flex; align-items: center; gap: 8px; }
+.as-icono { display: inline-flex; width: 38px; height: 38px; border-radius: 50%; background: #fef9c3; align-items: center; justify-content: center; flex: none; }
+.as-p { margin: 0; line-height: 1.5; overflow-wrap: anywhere; }
+.as-ruta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-weight: 700; font-size: 14px; }
+.as-flecha { color: var(--amarillo-osc); }
+.as-destino { color: var(--verde-osc); }
+.as-nota { background: var(--input); border-radius: 12px; padding: 10px 12px; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.as-botones { display: flex; flex-direction: column; gap: 8px; min-width: 220px; }
+.as-botones .btn, .as-botones .bo { width: 100%; }
+@media (max-width: 768px) {
+  .aviso-seguir { grid-template-columns: minmax(0, 1fr); }
+  .as-botones { min-width: 0; }
+}
 .reserva-card .pill { align-self: flex-start; }
 .reserva-card h3, .reserva-card p { margin: 0; }
 .ref-card { display: flex; flex-direction: column; gap: 10px; }

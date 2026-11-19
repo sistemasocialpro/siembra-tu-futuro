@@ -339,6 +339,87 @@
     actualizarBadge();
   }
 
+  // ---------- "¡X volvió a sembrar!" (SQL 27) ----------
+  async function leerAvisosSeguir() {
+    const { data, error } = await sb.rpc('mis_avisos_seguir');
+    return error || !Array.isArray(data) ? [] : data;
+  }
+
+  const textoNivel = (orden, nombre) => 'nivel ' + orden + ' (' + nombre + ')';
+
+  async function seguirPatrocinador(av) {
+    const { data, error } = await sb.rpc('responder_aviso_seguir', { p_aviso_id: av.id, p_acepta: true });
+    if (error) return aviso(traducirErrorDatos(error));
+    if (data.resultado === 'colocado') {
+      aviso('¡Listo! Entraste debajo de ' + av.patrocinador + ' como ' + NOMBRE_POSICION[data.posicion] + '. Empezaron tus 4 horas para hacer la tarea.', 'ok');
+      location.hash = enlaceGrupo(data.nivel_id);
+    } else if (data.resultado === 'anotado') {
+      aviso('Quedaste anotado. Cuando ' + av.patrocinador + ' suba a constructor en el ' + textoNivel(av.nivel_orden, av.nivel) +
+        ', entrarás debajo de él como regalador y empezarán tus 4 horas.', 'ok');
+      refrescar();
+    } else {
+      aviso(data.mensaje || 'Ese lugar ya no está disponible.');
+      refrescar();
+    }
+    actualizarBadge();
+  }
+
+  async function ahoraNo(av, tarjeta) {
+    const { error } = await sb.rpc('responder_aviso_seguir', { p_aviso_id: av.id, p_acepta: false });
+    if (error) return aviso(traducirErrorDatos(error));
+    tarjeta.remove();
+    aviso('Listo. Si cambias de idea, puedes seguir a ' + av.patrocinador + ' desde Niveles.', 'ok');
+  }
+
+  // Ícono del brote (SVG fijo del código, no es texto de usuarios)
+  function iconoBrote() {
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('width', '24'); svg.setAttribute('height', '24'); svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('aria-hidden', 'true');
+    [['M12 21V11', null, '#15803d'], ['M12 12C12 8 9 6 5 6.3C5 10 7.5 12.3 12 12Z', '#15803d'], ['M12 14C12 10.5 15 8.6 19 8.9C19 12.3 16.5 14.3 12 14Z', '#facc15']]
+      .forEach(([d, fill, stroke]) => {
+        const p = document.createElementNS(NS, 'path');
+        p.setAttribute('d', d);
+        if (fill) p.setAttribute('fill', fill);
+        if (stroke) { p.setAttribute('stroke', stroke); p.setAttribute('stroke-width', '2'); p.setAttribute('stroke-linecap', 'round'); }
+        svg.appendChild(p);
+      });
+    return el('span', { class: 'as-icono' }, svg);
+  }
+
+  function tarjetaAvisoSeguir(av) {
+    const nom = av.patrocinador;
+    const nivelY = textoNivel(av.nivel_orden, av.nivel);
+    const tarjeta = el('section', { class: 'card aviso-seguir', 'aria-label': nom + ' volvió a sembrar' });
+    tarjeta.append(
+      el('div', { class: 'as-texto' },
+        el('div', { class: 'as-cab' }, iconoBrote(), el('span', { class: 'pill pill-amarilla', text: 'Nuevo · tu patrocinador' })),
+        el('h3', { text: '¡' + nom + ' volvió a sembrar!' }),
+        el('p', { class: 'as-p', text: 'Tu patrocinador ' + nom + ' subió al ' + (av.nivel_max ? textoNivel(av.nivel_max_orden, av.nivel_max) : 'nivel más alto') +
+          ' y volvió a entrar al ' + nivelY + '. Sigue su secuencia.' }),
+        el('div', { class: 'as-ruta' },
+          av.nivel_max ? el('span', { text: 'Nivel ' + av.nivel_max_orden + ' (' + av.nivel_max + ') ✅' }) : null,
+          av.nivel_max ? el('span', { class: 'as-flecha', 'aria-hidden': 'true', text: '→' }) : null,
+          el('span', { class: 'as-destino', text: 'Nivel ' + av.nivel_orden + ' (' + av.nivel + ') · repetición' })),
+        el('div', { class: 'as-nota', text: av.pat_constructor
+          ? nom + ' ya es constructor en el ' + nivelY + ' y tiene un lugar libre. Si aceptas, entras ahora debajo de él como regalador y empiezan tus 4 horas.'
+          : 'Si aceptas, quedas anotado. Cuando ' + nom + ' suba a constructor en el ' + nivelY + ', entrarás debajo de él como regalador y empezarán tus 4 horas.' })
+      ),
+      el('div', { class: 'as-botones' },
+        el('button', { type: 'button', class: 'btn', onclick: () => seguirPatrocinador(av), text: 'Seguir a ' + nom + ' en el nivel ' + av.nivel_orden }),
+        el('button', { type: 'button', class: 'bo', onclick: () => ahoraNo(av, tarjeta), text: 'Ahora no' })
+      )
+    );
+    return tarjeta;
+  }
+
+  async function cargarAvisosSeguir() {
+    const avisos = (await leerAvisosSeguir()).filter((a) => a.estado === 'pendiente');
+    const caja = $('inicio-avisos');
+    vaciar(caja);
+    avisos.forEach((a) => caja.appendChild(tarjetaAvisoSeguir(a)));
+  }
+
   // ---------- Reserva de referidos (SQL 23) ----------
   // mi_reserva(): si estoy en la lista de espera de mi patrocinador ("Eres el N en espera")
   // o si me quitó de sus referidos. Sin el SQL 23 devuelve null y no se muestra nada.
@@ -663,6 +744,7 @@
       }
       // Reserva de referidos: "Eres el N en espera" y "Mis referidos"
       cargarReferidosYReserva().catch(() => {});
+      cargarAvisosSeguir().catch(() => {});
     } catch (err) {
       if (turno !== turnoInicio) return;
       const cr = $('inicio-reloj');
@@ -704,7 +786,7 @@
     const lista = $('niveles-lista');
     const cajaAviso = $('niveles-aviso');
     try {
-      const [niveles, datos, mr, rRep] = await Promise.all([leerNiveles(), leerMisDatos(), leerMiReserva(), sb.rpc('niveles_para_repetir')]);
+      const [niveles, datos, mr, rRep, avisosSeg] = await Promise.all([leerNiveles(), leerMisDatos(), leerMiReserva(), sb.rpc('niveles_para_repetir'), leerAvisosSeguir()]);
       if (turno !== turnoNiveles) return;
       // (25) Niveles inferiores al más alto que alcancé, sin posición mía: "Repetir con mi equipo"
       const repetibles = new Set((rRep.data && rRep.data.niveles) || []);
@@ -743,6 +825,17 @@
           botones.push(el('a', { class: 'btn btn-nivel', href: enlaceGrupo(n.id), text: 'Ver mi grupo' }));
         } else if (esperaAqui) {
           botones.push(el('button', { type: 'button', class: 'btn-bloqueado', disabled: true, text: '⏳ En lista de espera' }));
+        }
+        // (27) Aviso de mi patrocinador en este nivel: "Seguir a X" o "Anotado"
+        if (!aqui && !esperaAqui) {
+          avisosSeg.filter((a) => a.nivel_id === n.id).forEach((a) => {
+            botones.push(a.estado === 'aceptado'
+              ? el('button', { type: 'button', class: 'btn-bloqueado', disabled: true, text: '✅ Anotado: sigues a ' + a.patrocinador })
+              : el('button', { type: 'button', class: 'btn btn-nivel', onclick: () => seguirPatrocinador(a), text: 'Seguir a ' + a.patrocinador }));
+          });
+        }
+        if (aqui || esperaAqui) {
+          // ya tiene su botón
         } else if (repetibles.has(n.id)) {
           botones.push(esperaRepetir
             ? el('button', { type: 'button', class: 'btn-bloqueado', disabled: true, text: '⏳ Repetir desde el ' + fechaHora(esperaRepetir) })
@@ -1059,6 +1152,14 @@
   });
 
   // ---------- Arranque y actualización periódica ----------
+  // Al abrir la plataforma (pestaña nueva) o al iniciar sesión siempre se abre Inicio; dentro de la
+  // misma pestaña (por ejemplo, el menú desde Perfil) se respeta la sección pedida
+  try {
+    if (!sessionStorage.getItem('stf-abierta')) {
+      sessionStorage.setItem('stf-abierta', '1');
+      if (leerHash().id !== 'inicio') history.replaceState(null, '', location.pathname + location.search + '#inicio');
+    }
+  } catch (e) { /* sin sessionStorage: se respeta el enlace */ }
   mostrarSeccion();
   actualizarBadge();
 

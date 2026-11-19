@@ -41,6 +41,7 @@
 
   // Entra a panel.html (participante) o admin.html (administrador sin perfil)
   async function irAlInicio(session) {
+    try { sessionStorage.removeItem('stf-abierta'); } catch (e) { /* sin sessionStorage */ }
     const destino = await paginaDeInicio(sb, session.user.id);
     location.replace(destino || 'panel.html');
   }
