@@ -909,6 +909,12 @@ a.soporte-card:hover, a.soporte-card:focus-visible { border-color: var(--verde);
   .usuarios-filtro .sel { flex: 1; min-width: 0; }
 }
 
+/* Clave temporal / enlace de recuperación (Administración) */
+.clave-grande { font-family: ui-monospace, monospace; font-size: 30px; font-weight: 800; letter-spacing: .06em; text-align: center; background: var(--verde-noche); color: var(--amarillo); border-radius: 14px; padding: 16px; user-select: all; }
+.enviar-botones { display: flex; gap: 10px; flex-wrap: wrap; }
+.enviar-botones .btn, .enviar-botones .bo { flex: 1 1 160px; text-align: center; }
+.link-boton { background: none; border: 0; padding: 6px; font: inherit; color: var(--verde-osc); text-decoration: underline; cursor: pointer; align-self: center; }
+
 /* Administración: ficha del usuario */
 .link-ficha { background: none; border: 0; padding: 0; font: inherit; font-weight: 800; color: var(--verde-osc); text-decoration: underline; cursor: pointer; text-align: left; }
 .ficha-volver { align-self: flex-start; }

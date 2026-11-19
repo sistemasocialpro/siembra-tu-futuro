@@ -100,7 +100,7 @@ async function exigirParticipante(sb) {
   const session = await exigirSesion(sb);
   if (!session) return null;
   const destino = await paginaDeInicio(sb, session.user.id);
-  if (destino === 'admin.html') { location.replace('admin.html'); return null; }
+  if (destino === 'admin.html' || String(destino).startsWith('index.html')) { location.replace(destino); return null; }
   return session;
 }
 

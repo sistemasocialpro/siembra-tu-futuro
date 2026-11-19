@@ -43,7 +43,30 @@
   async function irAlInicio(session) {
     try { sessionStorage.removeItem('stf-abierta'); } catch (e) { /* sin sessionStorage */ }
     const destino = await paginaDeInicio(sb, session.user.id);
+    // (33) Clave temporal del administrador: se queda aquí para crear su clave nueva
+    if (String(destino).startsWith('index.html')) return abrirClaveTemporal();
     location.replace(destino || 'panel.html');
+  }
+
+  let modoTemporal = false;
+  function abrirClaveTemporal() {
+    modoTemporal = true;
+    const form = $('form-nueva-clave');
+    form.querySelector('h2').textContent = 'Crea tu clave nueva';
+    form.querySelector('p').textContent = 'Entraste con una clave temporal que te dio el administrador. Para seguir, crea tu propia clave (al menos 6 caracteres) y escríbela dos veces.';
+    if (!$('nueva-salir')) {
+      const salir = document.createElement('button');
+      salir.type = 'button';
+      salir.className = 'link-boton';
+      salir.id = 'nueva-salir';
+      salir.textContent = 'Salir';
+      salir.addEventListener('click', async () => {
+        try { await sb.auth.signOut({ scope: 'local' }); } catch (e) { /* igual salimos */ }
+        location.replace('index.html');
+      });
+      form.appendChild(salir);
+    }
+    abrirNuevaClave();
   }
 
   function limpiarEnlace() {
@@ -250,6 +273,8 @@
     try {
       const { data, error } = await sb.auth.updateUser({ password: p1 });
       if (error) throw error;
+      // (33) Ya tiene su propia clave: deja de ser temporal (también si vino por un enlace)
+      try { await sb.rpc('clave_cambiada'); } catch (e2) { /* sin el SQL 33 no pasa nada */ }
       mostrarMsg(msg, '¡Listo! Tu clave nueva quedó guardada. Entrando…', 'ok');
       boton.disabled = true;
       setTimeout(() => irAlInicio({ user: data.user }), 1500);
@@ -257,7 +282,7 @@
       const code = String((err && err.code) || '');
       const texto = String((err && err.message) || '');
       if (code === 'same_password' || /different from the old/i.test(texto))
-        mostrarMsg(msg, 'La clave nueva debe ser distinta de la anterior.');
+        mostrarMsg(msg, modoTemporal ? 'La clave nueva debe ser distinta de la clave temporal.' : 'La clave nueva debe ser distinta de la anterior.');
       else if (code === 'weak_password' || /password should|password is too/i.test(texto))
         mostrarMsg(msg, 'La clave es muy débil. Usa al menos 6 caracteres, mejor con letras y números.');
       else if (code === 'session_not_found' || /auth session missing|session/i.test(texto))

@@ -454,7 +454,8 @@
     caja.appendChild(el('section', { class: 'ficha-sec' }, el('h4', { text: 'Más acciones' }),
       el('div', { class: 'ficha-botones' },
         el('button', { type: 'button', class: 'bo btn-chico', onclick: () => cambiarPatrocinador(d), text: 'Cambiar patrocinador' }),
-        el('button', { type: 'button', class: 'bo btn-chico', onclick: () => cambiarClave(p), text: 'Cambiar clave' }),
+        el('button', { type: 'button', class: 'bo btn-chico', onclick: () => claveTemporal(d), text: 'Cambiar clave' }),
+        el('button', { type: 'button', class: 'bo btn-chico', onclick: () => enlaceRecuperacion(d), text: 'Copiar enlace de recuperación' }),
         el('button', { type: 'button', class: 'bo btn-chico', onclick: () => cambiarFundador(p, !d.es_fundador), text: d.es_fundador ? 'Quitar fundador' : 'Marcar como fundador' }))));
 
     // Últimos cambios
@@ -462,6 +463,101 @@
     if (!f.ultimos_cambios.length) reg.appendChild(el('p', { class: 'mut', text: 'Sin cambios registrados.' }));
     else reg.appendChild(listaRegistro(f.ultimos_cambios, false));
     caja.appendChild(reg);
+  }
+
+  // =====================================================================
+  // (33) Claves: Edge Function "admin-claves" (la service_role queda en Supabase, nunca aquí)
+  // =====================================================================
+  const URL_SITIO = new URL('./', location.href).href;
+
+  async function llamarClaves(cuerpo) {
+    const { data, error } = await sb.functions.invoke('admin-claves', { body: cuerpo });
+    if (!error) return data;
+    let texto = error.message || '';
+    try { const j = await error.context.json(); if (j && j.error) texto = j.error; } catch (e) { /* sin cuerpo */ }
+    if (/Failed to send|NOT_FOUND|404|fetch/i.test(texto) || error.name === 'FunctionsFetchError' || error.name === 'FunctionsRelayError') {
+      texto = 'La función "admin-claves" todavía no está desplegada en Supabase. Sigue los pasos de supabase/functions/admin-claves/LEEME.md.';
+    }
+    throw new Error(texto);
+  }
+
+  // Ventana con un valor para copiar o mandar por WhatsApp (la clave se muestra una sola vez)
+  function mostrarParaEnviar({ titulo, intro, valor, etiqueta, nota, whatsapp, mensaje, grande }) {
+    const viejo = $('dlg-enviar');
+    if (viejo) viejo.remove();
+    const campo = grande
+      ? el('div', { class: 'clave-grande', id: 'dlg-enviar-valor', text: valor })
+      : el('input', { class: 'in mono', id: 'dlg-enviar-valor', readonly: true, value: valor, 'aria-label': etiqueta });
+    const estado = el('span', { class: 'mut', 'aria-live': 'polite' });
+    const dlg = el('dialog', { class: 'modal', id: 'dlg-enviar', 'aria-labelledby': 'dlg-enviar-t' },
+      el('div', { class: 'modal-cuerpo' },
+        el('h3', { id: 'dlg-enviar-t', text: titulo }),
+        el('p', { class: 'modal-p', text: intro }),
+        campo,
+        el('div', { class: 'enviar-botones' },
+          el('button', { type: 'button', class: 'btn', onclick: async () => { estado.textContent = (await copiarTexto(valor)) ? '¡Copiado!' : 'No se pudo copiar: selecciónalo y cópialo a mano.'; }, text: 'Copiar' }),
+          whatsapp
+            ? el('a', { class: 'bo', href: enlaceWhatsApp(whatsapp, mensaje), target: '_blank', rel: 'noopener', text: 'Enviar por WhatsApp' })
+            : el('span', { class: 'mut', text: 'Sin WhatsApp registrado' })),
+        estado,
+        nota ? el('div', { class: 'modal-nota', text: nota }) : null,
+        el('div', { class: 'modal-botones' }, el('button', { type: 'button', class: 'bo', onclick: () => dlg.close(), text: 'Cerrar' }))));
+    dlg.addEventListener('close', () => dlg.remove());
+    document.body.appendChild(dlg);
+    dlg.showModal();
+    if (!grande) campo.select();
+  }
+
+  async function claveTemporal(d) {
+    if (ocupado) return;
+    const si = await confirmar({
+      titulo: 'Cambiar clave de ' + d.nombre_usuario,
+      texto: ['Se generará una ', el('b', { text: 'clave temporal' }), ' (por ejemplo Siembra-4827). Su clave actual dejará de funcionar, se cerrarán sus sesiones y, al entrar, tendrá que crear su propia clave nueva.'],
+      boton: 'Generar clave temporal'
+    });
+    if (!si) return;
+    ocupado = true;
+    document.body.classList.add('trabajando');
+    try {
+      const r = await llamarClaves({ accion: 'clave_temporal', user_id: d.id });
+      mostrarParaEnviar({
+        titulo: 'Clave temporal de ' + r.nombre_usuario,
+        intro: 'Esta clave se muestra una sola vez. Cópiala o envíala ahora por WhatsApp.',
+        valor: r.clave, etiqueta: 'Clave temporal', grande: true,
+        nota: 'Al entrar con esta clave se le pedirá crear su clave nueva. La clave no se guarda en el Registro.',
+        whatsapp: r.whatsapp,
+        mensaje: 'Hola ' + r.nombre_usuario + ', tu clave temporal de Siembra tu Futuro es: ' + r.clave + '\nEntra en ' + URL_SITIO + ' con tu usuario y esta clave. Te pediremos crear tu clave nueva.'
+      });
+      abrirFicha(d.id);
+    } catch (err) {
+      aviso(err.message || traducirErrorDatos(err));
+    } finally {
+      ocupado = false;
+      document.body.classList.remove('trabajando');
+    }
+  }
+
+  async function enlaceRecuperacion(d) {
+    if (ocupado) return;
+    ocupado = true;
+    document.body.classList.add('trabajando');
+    try {
+      const r = await llamarClaves({ accion: 'enlace_recuperacion', user_id: d.id, redirect_to: URL_SITIO });
+      mostrarParaEnviar({
+        titulo: 'Enlace de recuperación de ' + r.nombre_usuario,
+        intro: 'Con este enlace la persona crea su clave nueva. Sirve una sola vez y vence pronto.',
+        valor: r.enlace, etiqueta: 'Enlace de recuperación',
+        nota: 'El enlace no se guarda en el Registro (solo que se generó).',
+        whatsapp: r.whatsapp,
+        mensaje: 'Hola ' + r.nombre_usuario + ', para crear tu clave nueva de Siembra tu Futuro abre este enlace (sirve una sola vez y vence pronto):\n' + r.enlace
+      });
+      abrirFicha(d.id);
+    } catch (err) {
+      aviso(err.message || traducirErrorDatos(err));
+    } finally {
+      ocupado = false;
+      document.body.classList.remove('trabajando');
+    }
   }
 
   // "Editar datos": formulario en una ventana; antes de guardar se confirma cada cambio

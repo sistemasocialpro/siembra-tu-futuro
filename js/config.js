@@ -57,6 +57,11 @@ function crearClienteSupabase(op) {
 // participa, ver supabase/15_admin_separado.sql) -> admin.html. Sin perfil y sin ser admin -> null.
 async function paginaDeInicio(sb, userId) {
   const { data: perfil, error } = await sb.from('perfiles').select('id').eq('id', userId).maybeSingle();
+  if (perfil) {
+    // (33) Entró con una clave temporal del administrador: primero crea su propia clave
+    const { data: debe } = await sb.rpc('debo_cambiar_clave');
+    if (debe === true) return 'index.html?cambiar_clave=1';
+  }
   if (error || perfil) return 'panel.html';
   const { data: esAdmin } = await sb.rpc('es_admin');
   return esAdmin === true ? 'admin.html' : null;
