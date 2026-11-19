@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/estilos.css?v=19">
+<link rel="stylesheet" href="css/estilos.css?v=20">
 </head>
 <body class="cargando">
 
@@ -19,6 +19,7 @@
     <a href="#inicio" data-seccion="inicio">Inicio</a>
     <a href="#niveles" data-seccion="niveles">Niveles</a>
     <a href="#mi-grupo" data-seccion="mi-grupo">Mi grupo</a>
+    <a href="#historial" data-seccion="historial">Historial</a>
     <a href="#chat" data-seccion="chat">Chat</a>
     <a href="#notificaciones" data-seccion="notificaciones">Notificaciones<span class="badge" id="badge-notif" hidden></span></a>
     <a href="info-personal.html">Info personal</a>
@@ -111,6 +112,17 @@
         </div>
       </div>
 
+      <!-- Historial: niveles completados -->
+      <div class="seccion" id="sec-historial" hidden>
+        <section class="ban">
+          <div>
+            <h3>Mi historial</h3>
+            <div class="ban-sub" id="historial-resumen">Cargando…</div>
+          </div>
+        </section>
+        <div id="historial-lista" class="pila" aria-live="polite"></div>
+      </div>
+
       <!-- Notificaciones -->
       <div class="seccion" id="sec-notificaciones" hidden>
         <section class="card notif-cabecera">
@@ -139,9 +151,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.50.0/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=19"></script>
-<script src="js/comun.js?v=19"></script>
-<script src="js/reloj.js?v=19"></script>
-<script src="js/panel.js?v=19"></script>
+<script src="js/config.js?v=20"></script>
+<script src="js/comun.js?v=20"></script>
+<script src="js/reloj.js?v=20"></script>
+<script src="js/panel.js?v=20"></script>
 </body>
 </html>

@@ -311,10 +311,15 @@ function crearMapaGrupo(posiciones, opciones) {
       el('div', { class: 'cas-rol', text: NOMBRE_POSICION[pos].toUpperCase() }),
       // En celular el mapa es angosto: se muestra el nombre corto (RECIB., CONST. 1, REG. 1)
       el('div', { class: 'cas-rol-corto', 'aria-hidden': 'true', text: NOMBRE_CORTO_POSICION[pos] }),
-      el('div', { class: 'cas-nombre' }, p.user_id ? nombreConCortes(p.nombre_usuario || '—') : 'Esperando…'),
+      el('div', { class: 'cas-nombre' }, p.user_id ? nombreConCortes(p.nombre_usuario || '—') : ((op.textoLibre && op.textoLibre(p)) || 'Esperando…')),
+      op.debajoNombre ? op.debajoNombre(p) : null,
       el('div', { class: 'cas-estado', text: estadoCasilla(p) }),
       esYo ? el('div', { class: 'cas-tu', text: 'TÚ' }) : null
     );
+    if (op.iconos) {
+      const ic = op.iconos(p);
+      if (ic) casilla.appendChild(ic);
+    }
     if (op.acciones) {
       const acc = op.acciones(p);
       if (acc) casilla.appendChild(acc);

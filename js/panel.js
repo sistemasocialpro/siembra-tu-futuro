@@ -86,6 +86,7 @@
     'inicio': 'Inicio',
     'niveles': 'Niveles',
     'mi-grupo': 'Mi grupo',
+    'historial': 'Historial',
     'chat': 'Chat',
     'notificaciones': 'Notificaciones'
   };
@@ -96,7 +97,7 @@
     'perfil': 'perfil.html',
     'soporte': 'soporte.html'
   };
-  const REALES = ['inicio', 'niveles', 'mi-grupo', 'notificaciones'];
+  const REALES = ['inicio', 'niveles', 'mi-grupo', 'historial', 'notificaciones'];
   const menu = $('menu');
 
   function leerHash() {
@@ -110,6 +111,7 @@
     if (id === 'niveles') cargarNiveles();
     if (id === 'mi-grupo') cargarMiGrupo(params.get('nivel'));
     if (id === 'notificaciones') cargarNotificaciones();
+    if (id === 'historial') cargarHistorial();
   }
 
   function mostrarSeccion() {
@@ -242,6 +244,41 @@
     refrescar();
   }
 
+  // (29) El patrocinador elimina a su referido de esta casilla
+  async function eliminarDeCasilla(p, nivelNombre) {
+    const si = await confirmar({
+      titulo: 'Eliminar de esta casilla',
+      texto: [
+        el('p', { class: 'modal-p' }, '¿Eliminar a ', el('b', { text: p.nombre_usuario || 'esta persona' }), ' de ' + NOMBRE_POSICION[p.posicion] + ' en el nivel ' + nivelNombre + '?'),
+        el('div', { class: 'modal-nota', text: 'Sale solo de esta casilla (sus otras posiciones siguen igual) y deja de ser tu referido activo. La casilla queda Libre: tócala para elegir a alguien de tu lista de espera.' })
+      ],
+      boton: 'Sí, eliminar',
+      peligro: true
+    });
+    if (!si) return;
+    const r = await sb.rpc('eliminar_de_casilla', { p_posicion_id: p.posicion_id });
+    if (r.error) return aviso(traducirErrorDatos(r.error));
+    aviso(r.data + ' salió de la casilla. Ahora elige a alguien de tu lista de espera para ese lugar.', 'ok');
+    refrescar();
+  }
+
+  // (29) Llenar la casilla que liberé con alguien de mi lista de espera
+  async function llenarCasillaLibre(p, nivelNombre) {
+    const { data: candidatos, error } = await sb.rpc('candidatos_casilla_libre', { p_posicion_id: p.posicion_id });
+    if (error) return aviso(traducirErrorDatos(error));
+    const elegido = await elegirDeLista({
+      titulo: 'Elegir de mi lista de espera',
+      sub: NOMBRE_POSICION[p.posicion] + ' · Nivel ' + nivelNombre + '. Entra con su plazo y recibe un mensaje.',
+      items: (candidatos || []).map((c) => ({ titulo: c.nombre_usuario, sub: 'En espera desde ' + formatoFecha(c.en_espera_desde), valor: c })),
+      vacio: 'No tienes a nadie en tu lista de espera para este nivel. Cuando alguien se registre con tu enlace podrás elegirlo aquí.'
+    });
+    if (!elegido) return;
+    const r = await sb.rpc('llenar_casilla_libre', { p_posicion_id: p.posicion_id, p_user_id: elegido.user_id });
+    if (r.error) return aviso(traducirErrorDatos(r.error));
+    aviso(r.data + ' entró como ' + NOMBRE_POSICION[p.posicion] + '.', 'ok');
+    refrescar();
+  }
+
   async function participar(nivel) {
     const primero = !nivelAnterior(nivelesCache || [nivel], nivel); // primer nivel por orden
     const si = await confirmar({
@@ -337,6 +374,62 @@
       location.hash = enlaceGrupo(data.nivel_id);
     }
     actualizarBadge();
+  }
+
+  // =====================================================================
+  // HISTORIAL (29): niveles que completé con su grupo
+  // =====================================================================
+  const NOMBRE_ROL = { recibidor: 'Recibidor', constructor: 'Constructor', regalador: 'Regalador' };
+  function filaRol(rol, gente) {
+    return el('div', { class: 'hn-fila' },
+      el('span', { class: 'hn-rol', text: gente.length > 1 ? NOMBRE_ROL[rol] + 'es' : NOMBRE_ROL[rol] }),
+      el('div', { class: 'hn-nombres' }, ...gente.map((g) => el('span', { class: 'hn-nombre' + (g.yo ? ' yo' : '') + (g.nombre_usuario ? '' : ' vacio'),
+        text: (g.nombre_usuario || '—') + (g.yo ? ' (Tú)' : '') }))));
+  }
+
+  function tarjetaHistorial(h) {
+    const porPos = {};
+    (h.grupo || []).forEach((g) => { porPos[g.posicion] = g; });
+    const de = (lista) => lista.map((pos) => porPos[pos] || { nombre_usuario: null });
+    const tipo = h.repeticion > 0 ? 'Repetición ' + h.repeticion : 'Normal';
+    const nivel = { nombre: h.nivel };
+    return el('section', { class: 'card hn-card' },
+      el('div', { class: 'hn-cab' },
+        el('div', { class: 'nivel-circulo hn-circulo', style: 'background:' + colorNivel(nivel), 'aria-hidden': 'true', text: h.nivel.charAt(0) }),
+        el('div', { class: 'hn-titulo' },
+          el('b', { text: 'Nivel ' + h.nivel_orden + ' (' + h.nivel + ')' }),
+          el('span', { class: 'mut', text: 'Completado el ' + formatoFecha(h.completado_en) })),
+        el('span', { class: 'pill ' + (h.repeticion > 0 ? 'pill-amarilla' : 'pill-verde'), text: tipo + (h.grupo_fundador ? ' · grupo fundador' : '') })
+      ),
+      el('div', { class: 'hn-grupo' },
+        filaRol('recibidor', de(['recibidor'])),
+        filaRol('constructor', de(['constructor_1', 'constructor_2'])),
+        filaRol('regalador', de(['regalador_1', 'regalador_2', 'regalador_3', 'regalador_4']))
+      ),
+      el('div', { class: 'hn-tareas' }, el('b', { text: String(h.tareas_recibidas) }), ' tareas recibidas'),
+      h.foto_completa ? null : el('div', { class: 'mut hn-nota', text: 'Completaste este nivel antes de que se guardara el grupo completo: solo se muestran los nombres que se pudieron recuperar.' })
+    );
+  }
+
+  let turnoHistorial = 0;
+  async function cargarHistorial() {
+    const turno = ++turnoHistorial;
+    const caja = $('historial-lista');
+    const { data, error } = await sb.rpc('mi_historial_niveles');
+    if (turno !== turnoHistorial) return;
+    vaciar(caja);
+    if (error) return caja.appendChild(cajaError('No se pudo cargar tu historial. ' + traducirErrorDatos(error)));
+    const lista = Array.isArray(data) ? data : [];
+    $('historial-resumen').textContent = lista.length
+      ? (lista.length === 1 ? '1 nivel completado' : lista.length + ' niveles completados')
+      : 'Todavía no completaste ningún nivel.';
+    if (!lista.length) {
+      caja.appendChild(el('section', { class: 'card pronto' },
+        el('h3', { text: 'Tu historial está vacío' }),
+        el('p', { class: 'mut', style: 'margin:0', text: 'Cuando recibas las 4 tareas como Recibidor y completes un nivel, aparecerá aquí con tu grupo.' })));
+      return;
+    }
+    lista.forEach((h) => caja.appendChild(tarjetaHistorial(h)));
   }
 
   // ---------- "¡X volvió a sembrar!" (SQL 27) ----------
@@ -956,10 +1049,16 @@
       let whatsappsRegs = null;
       if (mia.posicion === 'recibidor') {
         [whatsappsRegs] = await Promise.all([whatsappsRegaladores(posiciones), perfilListo]);
-      } else if (recibidor && recibidor.user_id) {
+      }
+      // (29) El WhatsApp del recibidor se muestra siempre debajo de su nombre en el mapa
+      if (recibidor && recibidor.user_id) {
         const { data } = await sb.rpc('whatsapp_de', { p_user_id: recibidor.user_id });
         whatsappRecibidor = data || null;
       }
+      // (29) Qué puedo hacer en cada casilla: eliminar persona / elegir de mi lista de espera
+      const accCas = {};
+      const rAcc = await sb.rpc('mapa_acciones', { p_grupo_id: mia.grupo_id });
+      if (!rAcc.error && Array.isArray(rAcc.data)) rAcc.data.forEach((x) => { accCas[x.posicion] = x; });
       if (turno !== turnoGrupo) return;
 
       vaciar(cont);
@@ -1007,11 +1106,39 @@
 
       // Mapa: casillas en plazo vencido con "Retirar y reemplazar" para quien invitó a esa persona;
       // en un grupo repetido, además "Sigue a" / "Invitado por" y las acciones del patrocinador
+      const soyRecibidor = mia.posicion === 'recibidor';
       cont.appendChild(crearMapaGrupo(posiciones, {
         miId,
+        textoLibre: (p) => ((accCas[p.posicion] || {}).puedo_llenar ? 'Libre' : null),
+        // WhatsApp del recibidor debajo de su nombre (toca para abrir WhatsApp)
+        debajoNombre: (p) => {
+          if (p.posicion !== 'recibidor' || !p.user_id) return null;
+          return whatsappRecibidor
+            ? el('a', { class: 'cas-wa', href: enlaceWhatsApp(whatsappRecibidor, ''), target: '_blank', rel: 'noopener',
+                'aria-label': 'Escribir por WhatsApp a ' + (p.nombre_usuario || 'el recibidor'), text: whatsappRecibidor })
+            : el('div', { class: 'cas-wa sin', text: 'WhatsApp no visible' });
+        },
+        // Íconos: visto amarillo (tarea hecha, el recibidor la aprueba) y eliminar persona (su patrocinador)
+        iconos: (p) => {
+          const ic = [];
+          if (p.user_id && esRegalador(p.posicion) && p.estado === 'tarea_hecha') {
+            ic.push(soyRecibidor
+              ? el('button', { type: 'button', class: 'cas-ico cas-visto', title: 'Aprobar la tarea de ' + (p.nombre_usuario || ''),
+                  'aria-label': 'Aprobar la tarea de ' + (p.nombre_usuario || 'este regalador'), onclick: () => aprobar(p), text: '✓' })
+              : el('span', { class: 'cas-ico cas-visto', title: 'Tarea hecha, pendiente de aprobar', 'aria-label': 'Tarea hecha, pendiente de aprobar', text: '✓' }));
+          }
+          if ((accCas[p.posicion] || {}).puedo_eliminar) {
+            ic.push(el('button', { type: 'button', class: 'cas-ico cas-eliminar', title: 'Eliminar a ' + (p.nombre_usuario || ''),
+              'aria-label': 'Eliminar a ' + (p.nombre_usuario || 'esta persona') + ' de esta casilla', onclick: () => eliminarDeCasilla(p, nivel.nombre), text: '✕' }));
+          }
+          return ic.length ? el('div', { class: 'cas-iconos' }, ...ic) : null;
+        },
         acciones: (p) => {
           const info = infoRep[p.posicion] || {};
           const partes = [];
+          if ((accCas[p.posicion] || {}).puedo_llenar && !info.puedo_llenar) {
+            partes.push(el('button', { type: 'button', class: 'cb cb-asignar', onclick: () => llenarCasillaLibre(p, nivel.nombre), text: 'Elegir de mi lista de espera' }));
+          }
           if (info.sigue_a) partes.push(el('div', { class: 'cas-sigue', text: 'Sigue a: ' + info.sigue_a }));
           if (info.invitado_por) partes.push(el('div', { class: 'cas-invitado', text: 'Invitado por: ' + info.invitado_por }));
           if (info.puedo_quitar) {
