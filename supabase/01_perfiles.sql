@@ -111,19 +111,15 @@ create policy "perfiles: ver el propio"
   using ((select auth.uid()) = id);
 
 drop policy if exists "perfiles: actualizar el propio" on public.perfiles;
-create policy "perfiles: actualizar el propio"
-  on public.perfiles for update
-  to authenticated
-  using ((select auth.uid()) = id)
-  with check ((select auth.uid()) = id);
+-- (35) Sin política de UPDATE: el socio cambia sus datos solo con actualizar_mi_perfil().
 
 -- ---------- GRANTs (el proyecto NO expone tablas automáticamente) ----------
 grant usage on schema public to anon, authenticated;
 
 revoke all on table public.perfiles from anon, authenticated;
 grant select on table public.perfiles to authenticated;
--- Solo se puede cambiar el nombre de usuario; código e invitador quedan fijos.
-grant update (nombre_usuario) on table public.perfiles to authenticated;
+-- Nadie escribe directo en perfiles: los datos se cambian con funciones (actualizar_mi_perfil, admin_*).
+-- El nombre de usuario solo lo cambia Soporte (35_seguridad.sql).
 
 -- Funciones internas: nadie las llama directamente.
 revoke execute on function public.generar_codigo_invitacion() from public, anon, authenticated;

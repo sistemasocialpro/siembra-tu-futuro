@@ -31,3 +31,10 @@ Thumbs.db
 desktop.ini
 .vscode/
 .idea/
+
+# Respaldos de la base de datos (manual con respaldo.bat): nunca subir
+respaldo.bat
+respaldo-conexion.txt
+respaldos/
+*.sql.gpg
+*.dump
