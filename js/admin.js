@@ -121,55 +121,85 @@
     (data || []).forEach((c) => { correoPorId[c.user_id] = c.email; });
   }
 
-  async function cargarUsuarios() {
-    try {
-      await Promise.all([cargarPerfiles(), cargarCorreos()]);
-      pintarUsuarios();
-    } catch (err) {
-      const tb = $('tabla-usuarios');
-      vaciar(tb);
-      tb.appendChild(el('tr', null, el('td', { colspan: '10', class: 'msg error', text: 'No se pudieron cargar los usuarios. ' + traducirErrorDatos(err) })));
-    }
+  // ---------- (32) Resumen de la plataforma, tabla paginada y filtros ----------
+  const POR_PAGINA = 25;
+  const ESTADO_LISTA = { activo: ['Activo', 'pill-verde'], plazo_vencido: ['Plazo vencido', 'pill-roja'], espera: ['En espera', 'pill-amarilla'] };
+  let uPagina = 0;
+  let uTotal = 0;
+  let uTurno = 0;
+  let uCargada = false;
+
+  async function cargarResumen() {
+    const { data, error } = await sb.rpc('admin_resumen_plataforma');
+    const poner = (id, v) => { $(id).textContent = v == null ? '—' : formatoNumero(v); };
+    if (error || !data) { ['st-usuarios', 'st-tareas', 'st-tableros', 'st-espera'].forEach((id) => poner(id, null)); return; }
+    poner('st-usuarios', data.usuarios);
+    poner('st-tareas', data.tareas_recibidas);
+    poner('st-tableros', data.tableros);
+    poner('st-espera', data.en_espera);
+    $('st-espera-det').textContent = formatoNumero(data.espera_nivel) + ' de un nivel · ' + formatoNumero(data.espera_patrocinador) + ' de su patrocinador';
   }
 
-  function pintarUsuarios() {
-    const q = normalizar($('buscar-usuarios').value.trim());
-    const visibles = perfiles.filter((p) => !q ||
-      [numeroSocio(p.numero), String(p.numero || ''), p.nombre_usuario, p.nombre_completo, correoPorId[p.id], p.whatsapp, p.codigo_invitacion, nombreDe(p.invitado_por)]
-        .some((v) => normalizar(v).includes(q))
-    );
-    const tb = $('tabla-usuarios');
-    vaciar(tb);
-    if (!visibles.length) {
-      tb.appendChild(el('tr', null, el('td', { colspan: '10', class: 'mut', text: perfiles.length ? 'Ningún usuario coincide con la búsqueda.' : 'Todavía no hay usuarios registrados.' })));
-    }
-    visibles.forEach((p) => {
-      tb.appendChild(el('tr', null,
-        el('td', { class: 'mono', text: numeroSocio(p.numero) || '—' }),
-        el('td', null, el('button', { type: 'button', class: 'link-ficha', onclick: () => abrirFicha(p.id), title: 'Ver ficha', text: p.nombre_usuario })),
-        el('td', { text: p.nombre_completo || '—' }),
-        el('td', { text: correoPorId[p.id] || '—' }),
-        el('td', null, p.whatsapp
-          ? el('a', { class: 'link', href: enlaceWhatsApp(p.whatsapp, 'Hola ' + p.nombre_usuario + ', te escribo de Siembra tu Futuro.'), target: '_blank', rel: 'noopener', text: p.whatsapp })
-          : '—'),
-        el('td', { class: 'mono', text: p.codigo_invitacion }),
-        el('td', { text: nombreDe(p.invitado_por) || (p.invitado_por ? '(eliminado)' : '—') }),
-        el('td', { text: formatoFecha(p.creado_en) }),
-        el('td', null, p.es_fundador
-          ? el('div', { class: 'celda-fundador' },
-              el('span', { class: 'pill pill-verde', text: 'Fundador' }),
-              el('button', { type: 'button', class: 'cb cb-quitar', onclick: () => cambiarFundador(p, false), text: 'Quitar' }))
-          : el('button', { type: 'button', class: 'cb', onclick: () => cambiarFundador(p, true), text: 'Marcar como fundador' })),
-        el('td', null, el('div', { class: 'celda-fundador' },
-          el('button', { type: 'button', class: 'cb', onclick: () => cambiarClave(p), text: 'Cambiar clave' }),
-          el('button', { type: 'button', class: 'cb cb-quitar', onclick: () => eliminarCuenta(p), text: 'Eliminar cuenta' })))
-      ));
-    });
-    $('cuenta-usuarios').textContent = q
-      ? visibles.length + ' de ' + perfiles.length + ' usuarios'
-      : perfiles.length + (perfiles.length === 1 ? ' usuario' : ' usuarios');
+  async function cargarUsuarios() {
+    uCargada = true;
+    cargarResumen();
+    try {
+      await cargarNiveles();
+      const sel = $('filtro-nivel-usuarios');
+      if (sel.options.length <= 1) niveles.forEach((n) => sel.appendChild(el('option', { value: String(n.id), text: n.orden + '. ' + n.nombre })));
+    } catch (e) { /* el filtro por nivel queda solo con "Todos" */ }
+    cargarLista();
   }
-  $('buscar-usuarios').addEventListener('input', pintarUsuarios);
+
+  async function cargarLista() {
+    const turno = ++uTurno;
+    const tb = $('tabla-usuarios');
+    const { data, error } = await sb.rpc('admin_usuarios_lista', {
+      p_buscar: $('buscar-usuarios').value.trim() || null,
+      p_nivel: $('filtro-nivel-usuarios').value ? Number($('filtro-nivel-usuarios').value) : null,
+      p_orden: $('orden-usuarios').value,
+      p_desde: uPagina * POR_PAGINA,
+      p_cuantos: POR_PAGINA
+    });
+    if (turno !== uTurno) return;
+    vaciar(tb);
+    if (error) {
+      tb.appendChild(el('tr', null, el('td', { colspan: '8', class: 'msg error', text: 'No se pudieron cargar los usuarios. ' + traducirErrorDatos(error) })));
+      return;
+    }
+    uTotal = data.total;
+    if (!data.filas.length) {
+      tb.appendChild(el('tr', null, el('td', { colspan: '8', class: 'mut', text: uTotal ? 'No hay más usuarios.' : 'Ningún usuario coincide con la búsqueda.' })));
+    }
+    data.filas.forEach((u) => {
+      const est = ESTADO_LISTA[u.estado] || ESTADO_LISTA.activo;
+      const tr = el('tr', { class: 'fila-usuario' + (u.id === fichaId ? ' sel' : ''), tabindex: '0', 'data-id': u.id,
+        'aria-label': 'Ver ficha de ' + u.nombre_usuario, onclick: () => abrirFicha(u.id),
+        onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrirFicha(u.id); } } },
+        el('td', null, el('div', { class: 'u-num', text: u.numero || '—' }), el('div', { class: 'mono u-codigo', text: u.codigo || '' })),
+        el('td', null, el('b', { class: 'u-usuario' }, nombreConCortes(u.nombre_usuario)), u.es_fundador ? el('span', { class: 'u-fundador', title: 'Fundador', text: '★' }) : null),
+        el('td', { class: 'u-nombre', text: u.nombre_completo || '—' }),
+        el('td', null, u.nivel_orden ? el('span', { class: 'u-nivel' },
+          el('i', { class: 'u-punto', style: 'background:' + colorNivel({ nombre: u.nivel_nombre }), 'aria-hidden': 'true' }), u.nivel_orden + '. ' + u.nivel_nombre) : el('span', { class: 'mut', text: '—' })),
+        el('td', { class: 'num', 'data-et': 'Tableros', text: formatoNumero(u.tableros) }),
+        el('td', { class: 'num num-verde', 'data-et': 'Recibidas', text: formatoNumero(u.tareas_recibidas) }),
+        el('td', { class: 'num', 'data-et': 'Hechas', text: formatoNumero(u.tareas_hechas) }),
+        el('td', null, el('span', { class: 'pill ' + est[1], text: est[0] })));
+      tb.appendChild(tr);
+    });
+    const paginas = Math.max(1, Math.ceil(uTotal / POR_PAGINA));
+    $('cuenta-usuarios').textContent = formatoNumero(uTotal) + (uTotal === 1 ? ' usuario' : ' usuarios');
+    $('pag-info').textContent = 'Página ' + (uPagina + 1) + ' de ' + paginas;
+    $('pag-ant').disabled = uPagina === 0;
+    $('pag-sig').disabled = uPagina + 1 >= paginas;
+  }
+
+  let tBuscarU;
+  $('buscar-usuarios').addEventListener('input', () => { clearTimeout(tBuscarU); tBuscarU = setTimeout(() => { uPagina = 0; cargarLista(); }, 250); });
+  $('filtro-nivel-usuarios').addEventListener('change', () => { uPagina = 0; cargarLista(); });
+  $('orden-usuarios').addEventListener('change', () => { uPagina = 0; cargarLista(); });
+  $('pag-ant').addEventListener('click', () => { if (uPagina > 0) { uPagina--; cargarLista(); } });
+  $('pag-sig').addEventListener('click', () => { uPagina++; cargarLista(); });
 
   // En los campos de una ventana, Enter = botón de confirmar (no "Cancelar", que va primero)
   function enterConfirma(e) {
@@ -237,7 +267,7 @@
       () => sb.rpc('admin_eliminar_cuenta', { p_user_id: p.id }),
       'La cuenta de ' + p.nombre_usuario + ' fue eliminada.'
     );
-    if (ok) { cerrarFicha(); cargarUsuarios(); actualizarBadgeEspera(); }
+    if (ok) { cerrarFicha(); cargarResumen(); cargarLista(); actualizarBadgeEspera(); }
   }
 
   // Fundador: en todos los niveles menos el primero crea su propio grupo como recibidor al tocar Participar
@@ -256,7 +286,7 @@
       () => sb.rpc('admin_marcar_fundador', { p_user_id: p.id, p_es_fundador: valor }),
       p.nombre_usuario + (valor ? ' ahora es fundador.' : ' ya no es fundador.')
     );
-    if (ok) { cargarUsuarios(); if (fichaId === p.id) abrirFicha(p.id); }
+    if (ok) { cargarLista(); if (fichaId === p.id) abrirFicha(p.id); }
   }
 
   // =====================================================================
@@ -273,166 +303,250 @@
       d.toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' });
   }
 
+  // En computadora la ficha va a la derecha; en celular se abre en pantalla completa
+  const fichaPantallaCompleta = () => window.matchMedia('(max-width: 1099px)').matches;
+
+  function marcarFila() {
+    document.querySelectorAll('#tabla-usuarios .fila-usuario').forEach((tr) => tr.classList.toggle('sel', tr.dataset.id === fichaId));
+  }
+
+  function fichaVacia() {
+    const caja = $('ficha');
+    vaciar(caja);
+    caja.appendChild(el('div', { class: 'ficha-vacia' },
+      el('div', { class: 'ficha-vacia-ico', 'aria-hidden': 'true', text: '👤' }),
+      el('b', { text: 'Elige un usuario' }),
+      el('span', { class: 'mut', text: 'Toca una fila de la tabla para ver su ficha.' })));
+  }
+
   function cerrarFicha() {
     fichaId = null;
-    $('ficha').hidden = true;
-    $('usuarios-lista').hidden = false;
-    if (!perfiles.length) cargarUsuarios();
+    $('ficha').classList.remove('abierta');
+    document.body.classList.remove('ficha-abierta');
+    fichaVacia();
+    marcarFila();
   }
 
   async function abrirFicha(id) {
     if ($('pan-usuarios').hidden) mostrarTab('usuarios', true);
+    if (!uCargada) cargarUsuarios();
     fichaId = id;
-    $('usuarios-lista').hidden = true;
+    marcarFila();
     const caja = $('ficha');
-    caja.hidden = false;
+    if (fichaPantallaCompleta()) {
+      caja.classList.add('abierta');
+      document.body.classList.add('ficha-abierta');
+    }
     vaciar(caja);
-    caja.appendChild(el('div', { class: 'card mut', text: 'Cargando ficha…' }));
-    window.scrollTo(0, 0);
-    const { data, error } = await sb.rpc('admin_ficha_usuario', { p_user_id: id });
+    caja.appendChild(el('div', { class: 'mut ficha-cargando', text: 'Cargando ficha…' }));
+    caja.scrollTop = 0;
+    const [rf, rx] = await Promise.all([
+      sb.rpc('admin_ficha_usuario', { p_user_id: id }),
+      sb.rpc('admin_ficha_extra', { p_user_id: id })
+    ]);
     if (fichaId !== id) return;
     vaciar(caja);
-    caja.appendChild(el('button', { type: 'button', class: 'bo btn-chico ficha-volver', onclick: cerrarFicha, text: '← Volver a la lista' }));
-    if (error) {
-      caja.appendChild(el('div', { class: 'msg error', text: 'No se pudo cargar la ficha. ' + traducirErrorDatos(error) }));
+    if (rf.error) {
+      caja.appendChild(el('button', { type: 'button', class: 'bo btn-chico', onclick: cerrarFicha, text: '← Volver a la lista' }));
+      caja.appendChild(el('div', { class: 'msg error', text: 'No se pudo cargar la ficha. ' + traducirErrorDatos(rf.error) }));
       return;
     }
-    pintarFicha(data);
+    pintarFicha(rf.data, rx.error ? { niveles: [], referidos: [] } : rx.data);
   }
 
   function dato(etiqueta, valor) {
-    return el('div', { class: 'ficha-dato' }, el('span', { class: 'mut', text: etiqueta }), el('b', { text: valor == null || valor === '' ? '—' : String(valor) }));
+    return el('div', { class: 'ficha-dato' }, el('span', { class: 'mut', text: etiqueta }),
+      valor instanceof Node ? valor : el('b', { text: valor == null || valor === '' ? '—' : String(valor) }));
   }
 
-  function pintarFicha(f) {
+  function pintarFicha(f, x) {
     const d = f.datos;
     const p = { id: d.id, nombre_usuario: d.nombre_usuario, es_fundador: d.es_fundador };
     const caja = $('ficha');
+    const sum = (k) => f.tareas.reduce((a, t) => a + (t[k] || 0), 0);
+    const recibidas = sum('recibidas_normal') + sum('recibidas_repeticion');
+    const hechas = sum('hechas_normal') + sum('hechas_repeticion');
+    const tableros = x.niveles.reduce((a, n) => a + n.normales + n.repeticiones, 0);
 
     // Cabecera
-    caja.appendChild(el('section', { class: 'ban ficha-ban' },
-      el('div', null,
-        el('div', { class: 'ficha-num', text: 'Socio N.º ' + (d.numero || '—') }),
-        el('h3', { text: d.nombre_usuario }),
-        el('div', { class: 'ban-sub', text: (d.nombre_completo || '') + ' · Registrado el ' + formatoFecha(d.creado_en) })),
+    caja.appendChild(el('div', { class: 'ficha-cab' },
+      el('button', { type: 'button', class: 'ficha-cerrar', onclick: cerrarFicha, 'aria-label': 'Cerrar ficha', title: 'Cerrar', text: '✕' }),
+      el('div', { class: 'ficha-avatar', 'aria-hidden': 'true', text: d.nombre_usuario.charAt(0).toUpperCase() }),
+      el('div', { class: 'ficha-cab-txt' },
+        el('h3', null, nombreConCortes(d.nombre_usuario)),
+        el('div', { class: 'ficha-num', text: 'N.º ' + (d.numero || '—') + ' · Código ' + (d.codigo_invitacion || '—') })),
       el('div', { class: 'ficha-pills' },
         d.es_fundador ? el('span', { class: 'pill pill-amarilla', text: 'Fundador' }) : null,
-        el('span', { class: 'pill pill-verde', text: ESTADO_REFERIDO[d.referido_estado] || d.referido_estado }))
-    ));
+        el('span', { class: 'pill pill-verde', text: ESTADO_REFERIDO[d.referido_estado] || d.referido_estado }))));
 
-    // Datos editables
-    const campos = {
-      nombre: el('input', { class: 'in', id: 'f-nombre', value: d.nombre_completo || '', maxlength: '80', autocomplete: 'off' }),
-      usuario: el('input', { class: 'in', id: 'f-usuario', value: d.nombre_usuario || '', maxlength: '20', autocomplete: 'off', autocapitalize: 'none' }),
-      correo: el('input', { class: 'in', id: 'f-correo', type: 'email', value: d.correo || '', maxlength: '120', autocomplete: 'off' }),
-      whatsapp: el('input', { class: 'in', id: 'f-whatsapp', type: 'tel', value: d.whatsapp || '', maxlength: '20', autocomplete: 'off' })
-    };
-    const errDatos = el('div', { class: 'msg error', hidden: true });
-    const formDatos = el('form', { class: 'ficha-form', novalidate: true },
-      el('label', { class: 'lb', for: 'f-nombre' }, 'Nombre completo', campos.nombre),
-      el('label', { class: 'lb', for: 'f-usuario' }, 'Usuario', campos.usuario),
-      el('label', { class: 'lb', for: 'f-correo' }, 'Correo', campos.correo),
-      el('label', { class: 'lb', for: 'f-whatsapp' }, 'WhatsApp', campos.whatsapp),
-      errDatos,
-      el('button', { type: 'submit', class: 'btn', text: 'Guardar cambios' })
-    );
-    formDatos.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      errDatos.hidden = true;
-      const nuevo = { nombre: campos.nombre.value.trim(), usuario: campos.usuario.value.trim().toLowerCase(), correo: campos.correo.value.trim().toLowerCase(), whatsapp: campos.whatsapp.value.trim() };
-      const antes = { nombre: d.nombre_completo || '', usuario: d.nombre_usuario || '', correo: (d.correo || '').toLowerCase(), whatsapp: d.whatsapp || '' };
-      const etiquetas = { nombre: 'Nombre completo', usuario: 'Usuario', correo: 'Correo', whatsapp: 'WhatsApp' };
-      const cambios = Object.keys(nuevo).filter((k) => nuevo[k] !== antes[k]);
-      if (!cambios.length) { errDatos.textContent = 'No cambiaste ningún dato.'; errDatos.hidden = false; return; }
-      if (nuevo.whatsapp && typeof errorWhatsApp === 'function') {
-        const ew = errorWhatsApp(nuevo.whatsapp);
-        if (ew) { errDatos.textContent = ew; errDatos.hidden = false; return; }
-      }
-      const si = await confirmar({
-        titulo: 'Guardar cambios de ' + d.nombre_usuario,
-        texto: [el('ul', { class: 'equipo-lista' }, ...cambios.map((k) => el('li', null,
-          el('b', { text: etiquetas[k] + ': ' }), (antes[k] || '—') + ' → ' + (nuevo[k] || '—'))))].concat(
-          cambios.includes('correo') ? [el('div', { class: 'modal-nota', text: 'Con el correo nuevo entrará a la plataforma. Avísale.' })] : []),
-        boton: 'Guardar cambios'
-      });
-      if (!si) return;
-      const ok = await ejecutar(
-        () => sb.rpc('admin_editar_usuario', { p_user_id: d.id, p_nombre_completo: nuevo.nombre, p_nombre_usuario: nuevo.usuario, p_correo: nuevo.correo, p_whatsapp: nuevo.whatsapp }),
-        'Datos de ' + nuevo.usuario + ' guardados.'
-      );
-      if (ok) { abrirFicha(d.id); cargarUsuarios(); }
-    });
+    // Tres totales
+    caja.appendChild(el('div', { class: 'ficha-totales3' },
+      el('div', { class: 'ft' }, el('b', { class: 'num-verde', text: formatoNumero(recibidas) }), el('span', { text: 'Tareas recibidas' })),
+      el('div', { class: 'ft' }, el('b', { text: formatoNumero(hechas) }), el('span', { text: 'Tareas hechas' })),
+      el('div', { class: 'ft' }, el('b', { text: formatoNumero(tableros) }), el('span', { text: 'Tableros' }))));
 
-    caja.appendChild(el('div', { class: 'ficha-grid' },
-      el('section', { class: 'card' }, el('h3', { text: 'Datos' }), formDatos),
-      el('section', { class: 'card' },
-        el('h3', { text: 'Cuenta y red' }),
-        el('div', { class: 'ficha-datos' },
-          dato('Código de invitación', d.codigo_invitacion),
-          dato('Último acceso', d.ultimo_acceso ? fechaHoraLarga(d.ultimo_acceso) : 'Nunca'),
-          dato('País', d.pais),
-          dato('WhatsApp visible para su grupo', d.acepta_whatsapp_visible ? 'Sí' : 'No'),
-          dato('Patrocinador', d.patrocinador ? (d.patrocinador_numero ? d.patrocinador_numero + ' · ' : '') + d.patrocinador : 'Sin patrocinador'),
-          dato('Referidos', f.referidos.activos + ' activos · ' + f.referidos.espera + ' en espera · ' + f.referidos.total + ' en total')),
-        el('div', { class: 'ficha-botones' },
-          el('button', { type: 'button', class: 'bo btn-chico', onclick: () => cambiarPatrocinador(d), text: 'Cambiar patrocinador' }),
-          el('button', { type: 'button', class: 'bo btn-chico', onclick: () => cambiarClave(p), text: 'Cambiar clave' }),
-          el('button', { type: 'button', class: 'bo btn-chico', onclick: () => cambiarFundador(p, !d.es_fundador), text: d.es_fundador ? 'Quitar fundador' : 'Marcar como fundador' }),
-          el('button', { type: 'button', class: 'bt-salir btn-chico', onclick: () => eliminarCuenta(p), text: 'Eliminar cuenta' })))
-    ));
+    // Botones principales
+    caja.appendChild(el('div', { class: 'ficha-acciones' },
+      el('button', { type: 'button', class: 'btn btn-chico', onclick: () => verTablerosDe(d), text: 'Ver tableros' }),
+      el('button', { type: 'button', class: 'bo btn-chico', onclick: () => verEnArbol(d), text: 'Ver en el árbol' }),
+      el('button', { type: 'button', class: 'bo btn-chico', onclick: () => editarDatos(d), text: 'Editar datos' }),
+      el('button', { type: 'button', class: 'bt-salir btn-chico', onclick: () => eliminarCuenta(p), text: 'Eliminar' })));
 
-    // Posiciones
-    const pos = el('section', { class: 'card' }, el('h3', { text: 'Posiciones' }));
+    // Datos
+    caja.appendChild(el('section', { class: 'ficha-sec' }, el('h4', { text: 'Datos' }),
+      el('div', { class: 'ficha-datos' },
+        dato('Nombre', d.nombre_completo),
+        dato('Correo', d.correo),
+        dato('WhatsApp', d.whatsapp ? el('a', { class: 'link', href: enlaceWhatsApp(d.whatsapp, 'Hola ' + d.nombre_usuario + ', te escribo de Siembra tu Futuro.'), target: '_blank', rel: 'noopener', text: d.whatsapp }) : null),
+        dato('País', d.pais),
+        dato('Registrado', formatoFecha(d.creado_en)),
+        dato('Último acceso', d.ultimo_acceso ? fechaHoraLarga(d.ultimo_acceso) : 'Nunca'))));
+
+    // Patrocinador y referidos
+    const refs = el('div', { class: 'ficha-refs' });
+    if (!x.referidos.length) refs.appendChild(el('span', { class: 'mut', text: 'Sin referidos.' }));
+    x.referidos.forEach((r) => refs.appendChild(el('button', { type: 'button', class: 'ref-chip' + (r.referido_estado === 'activo' ? '' : ' otro'),
+      title: ESTADO_REFERIDO[r.referido_estado] || '', onclick: () => abrirFicha(r.id), text: (r.numero ? r.numero + ' · ' : '') + r.nombre_usuario })));
+    caja.appendChild(el('section', { class: 'ficha-sec' }, el('h4', { text: 'Patrocinador y referidos' }),
+      el('div', { class: 'ficha-datos' },
+        dato('Patrocinador', d.patrocinador_id
+          ? el('button', { type: 'button', class: 'link-ficha', onclick: () => abrirFicha(d.patrocinador_id), text: (d.patrocinador_numero ? d.patrocinador_numero + ' · ' : '') + d.patrocinador })
+          : 'Sin patrocinador'),
+        dato('Referidos', f.referidos.activos + ' activos · ' + f.referidos.espera + ' en espera · ' + f.referidos.total + ' en total')),
+      refs));
+
+    // Por nivel: tableros normales, repeticiones y tareas recibidas (con barra)
+    const sec = el('section', { class: 'ficha-sec' }, el('h4', { text: 'Por nivel' }));
+    if (!x.niveles.length) {
+      sec.appendChild(el('p', { class: 'mut', text: 'Todavía no completó tableros ni recibió tareas.' }));
+    } else {
+      const max = Math.max(1, ...x.niveles.map((n) => n.tareas_recibidas));
+      const tb = el('tbody');
+      x.niveles.forEach((n) => tb.appendChild(el('tr', null,
+        el('td', null, el('b', { text: n.nivel_orden + '. ' + n.nivel })),
+        el('td', { class: 'num', text: String(n.normales) }),
+        el('td', { class: 'num', text: String(n.repeticiones) }),
+        el('td', null, el('div', { class: 'barra-celda' },
+          el('div', { class: 'barra', role: 'img', 'aria-label': n.tareas_recibidas + ' tareas recibidas' },
+            el('span', { style: 'width:' + Math.round((n.tareas_recibidas / max) * 100) + '%' })),
+          el('b', { class: 'num-verde', text: String(n.tareas_recibidas) }))))));
+      sec.appendChild(el('div', { class: 'tabla-wrap' }, el('table', { class: 'tabla tabla-niveles-ficha' },
+        el('thead', null, el('tr', null, el('th', { scope: 'col', text: 'Nivel' }), el('th', { scope: 'col', class: 'num', text: 'Normales' }),
+          el('th', { scope: 'col', class: 'num' }, el('abbr', { title: 'Repeticiones', text: 'Repet.' })), el('th', { scope: 'col', text: 'Tareas recibidas' }))),
+        tb)));
+    }
+    caja.appendChild(sec);
+
+    // Posiciones (con Mover)
+    const pos = el('section', { class: 'ficha-sec' }, el('h4', { text: 'Posiciones' }));
     if (!f.posiciones.length) pos.appendChild(el('p', { class: 'mut', text: 'No tiene posiciones.' + (f.espera.length ? ' En lista de espera de: ' + f.espera.join(', ') + '.' : '') }));
-    f.posiciones.forEach((x) => {
+    f.posiciones.forEach((y) => {
       pos.appendChild(el('div', { class: 'ficha-pos' },
         el('div', null,
-          el('b', { text: 'Nivel ' + x.nivel_orden + ' (' + x.nivel + ') · ' + NOMBRE_POSICION[x.posicion] }),
-          el('span', { class: 'mut', text: (x.tipo_grupo === 'repetido' ? 'Grupo repetido' : 'Grupo') + ' de ' + (x.recibidor || 'recibidor libre') +
-            (ESTADO_CASILLA[x.estado] ? ' · ' + ESTADO_CASILLA[x.estado] : '') + (x.origen === 'admin' ? ' · puesto por el admin' : '') })),
-        el('button', { type: 'button', class: 'bo btn-chico', onclick: () => moverPosicion(d, x), text: 'Mover' })));
+          el('b', { text: 'Nivel ' + y.nivel_orden + ' (' + y.nivel + ') · ' + NOMBRE_POSICION[y.posicion] }),
+          el('span', { class: 'mut', text: (y.tipo_grupo === 'repetido' ? 'Grupo repetido' : 'Grupo') + ' de ' + (y.recibidor || 'recibidor libre') +
+            (ESTADO_CASILLA[y.estado] ? ' · ' + ESTADO_CASILLA[y.estado] : '') })),
+        el('button', { type: 'button', class: 'bo btn-chico', onclick: () => moverPosicion(d, y), text: 'Mover' })));
     });
-    if (f.posiciones.length && f.espera.length) pos.appendChild(el('p', { class: 'mut', text: 'También en lista de espera de: ' + f.espera.join(', ') + '.' }));
     caja.appendChild(pos);
 
-    // Tareas por nivel
-    const filas = f.tareas.filter((t) => t.recibidas_normal + t.recibidas_repeticion + t.hechas_normal + t.hechas_repeticion > 0);
-    const sum = (k) => f.tareas.reduce((a, t) => a + t[k], 0);
-    const tot = { rn: sum('recibidas_normal'), rr: sum('recibidas_repeticion'), hn: sum('hechas_normal'), hr: sum('hechas_repeticion') };
-    const tareas = el('section', { class: 'card' }, el('h3', { text: 'Tareas por nivel' }),
-      el('p', { class: 'mut', text: 'Recibidas = aprobadas como Recibidor. Hechas = como Regalador (aprobadas). Repetición = ya había completado ese nivel antes.' }));
-    if (!filas.length) {
-      tareas.appendChild(el('p', { class: 'mut', text: 'Todavía no tiene tareas recibidas ni hechas.' }));
-    } else {
-      const tb = el('tbody');
-      filas.forEach((t) => tb.appendChild(el('tr', null,
-        el('td', null, el('b', { text: t.nivel_orden + '. ' + t.nivel })),
-        el('td', { text: String(t.recibidas_normal) }), el('td', { text: String(t.recibidas_repeticion) }),
-        el('td', { text: String(t.hechas_normal) }), el('td', { text: String(t.hechas_repeticion) }),
-        el('td', null, el('b', { text: String(t.recibidas_normal + t.recibidas_repeticion + t.hechas_normal + t.hechas_repeticion) })))));
-      tb.appendChild(el('tr', { class: 'fila-total' },
-        el('td', null, el('b', { text: 'Total' })),
-        el('td', { text: String(tot.rn) }), el('td', { text: String(tot.rr) }), el('td', { text: String(tot.hn) }), el('td', { text: String(tot.hr) }),
-        el('td', null, el('b', { text: String(tot.rn + tot.rr + tot.hn + tot.hr) }))));
-      tareas.appendChild(el('div', { class: 'tabla-wrap' }, el('table', { class: 'tabla tabla-tareas' },
-        el('thead', null,
-          el('tr', null, el('th', { scope: 'col', rowspan: '2', text: 'Nivel' }), el('th', { scope: 'colgroup', colspan: '2', text: 'Recibidas' }),
-            el('th', { scope: 'colgroup', colspan: '2', text: 'Hechas' }), el('th', { scope: 'col', rowspan: '2', text: 'Total' })),
-          el('tr', null, el('th', { scope: 'col', text: 'Normal' }), el('th', { scope: 'col', text: 'Repetición' }),
-            el('th', { scope: 'col', text: 'Normal' }), el('th', { scope: 'col', text: 'Repetición' }))),
-        tb)));
-      tareas.appendChild(el('div', { class: 'ficha-totales' },
-        el('span', null, 'Recibidas: ', el('b', { text: String(tot.rn + tot.rr) })),
-        el('span', null, 'Hechas: ', el('b', { text: String(tot.hn + tot.hr) })),
-        el('span', null, 'Total general: ', el('b', { text: String(tot.rn + tot.rr + tot.hn + tot.hr) }))));
-    }
-    caja.appendChild(tareas);
+    // Más acciones
+    caja.appendChild(el('section', { class: 'ficha-sec' }, el('h4', { text: 'Más acciones' }),
+      el('div', { class: 'ficha-botones' },
+        el('button', { type: 'button', class: 'bo btn-chico', onclick: () => cambiarPatrocinador(d), text: 'Cambiar patrocinador' }),
+        el('button', { type: 'button', class: 'bo btn-chico', onclick: () => cambiarClave(p), text: 'Cambiar clave' }),
+        el('button', { type: 'button', class: 'bo btn-chico', onclick: () => cambiarFundador(p, !d.es_fundador), text: d.es_fundador ? 'Quitar fundador' : 'Marcar como fundador' }))));
 
-    // Últimos cambios del admin sobre esta persona
-    const reg = el('section', { class: 'card' }, el('h3', { text: 'Últimos cambios del administrador' }));
+    // Últimos cambios
+    const reg = el('section', { class: 'ficha-sec' }, el('h4', { text: 'Últimos cambios del administrador' }));
     if (!f.ultimos_cambios.length) reg.appendChild(el('p', { class: 'mut', text: 'Sin cambios registrados.' }));
     else reg.appendChild(listaRegistro(f.ultimos_cambios, false));
     caja.appendChild(reg);
+  }
+
+  // "Editar datos": formulario en una ventana; antes de guardar se confirma cada cambio
+  async function editarDatos(d) {
+    if (ocupado) return;
+    const campos = {
+      nombre: el('input', { class: 'in', id: 'ed-nombre', value: d.nombre_completo || '', maxlength: '80', autocomplete: 'off' }),
+      usuario: el('input', { class: 'in', id: 'ed-usuario', value: d.nombre_usuario || '', maxlength: '20', autocomplete: 'off', autocapitalize: 'none' }),
+      correo: el('input', { class: 'in', id: 'ed-correo', type: 'email', value: d.correo || '', maxlength: '120', autocomplete: 'off' }),
+      whatsapp: el('input', { class: 'in', id: 'ed-whatsapp', type: 'tel', value: d.whatsapp || '', maxlength: '20', autocomplete: 'off' })
+    };
+    const err = el('span', { class: 'err', 'aria-live': 'polite' });
+    const extra = el('div', { class: 'ficha-form' },
+      el('label', { class: 'lb', for: 'ed-nombre' }, 'Nombre completo', campos.nombre),
+      el('label', { class: 'lb', for: 'ed-usuario' }, 'Usuario', campos.usuario),
+      el('label', { class: 'lb', for: 'ed-correo' }, 'Correo', campos.correo),
+      el('label', { class: 'lb', for: 'ed-whatsapp' }, 'WhatsApp', campos.whatsapp),
+      err);
+    const etiquetas = { nombre: 'Nombre completo', usuario: 'Usuario', correo: 'Correo', whatsapp: 'WhatsApp' };
+    const antes = { nombre: d.nombre_completo || '', usuario: d.nombre_usuario || '', correo: (d.correo || '').toLowerCase(), whatsapp: d.whatsapp || '' };
+    let nuevo;
+    let cambios;
+    for (;;) {
+      const si = await confirmar({ titulo: 'Editar datos de ' + d.nombre_usuario, texto: 'Corrige los datos y toca Continuar.', extra, boton: 'Continuar' });
+      if (!si) return;
+      nuevo = { nombre: campos.nombre.value.trim(), usuario: campos.usuario.value.trim().toLowerCase(), correo: campos.correo.value.trim().toLowerCase(), whatsapp: campos.whatsapp.value.trim() };
+      cambios = Object.keys(nuevo).filter((k) => nuevo[k] !== antes[k]);
+      const ew = nuevo.whatsapp && typeof errorWhatsApp === 'function' ? errorWhatsApp(nuevo.whatsapp) : '';
+      if (!cambios.length) err.textContent = 'No cambiaste ningún dato.';
+      else if (!/^[a-z0-9_]{3,20}$/.test(nuevo.usuario)) err.textContent = 'El usuario debe tener de 3 a 20 caracteres: minúsculas, números o _.';
+      else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(nuevo.correo)) err.textContent = 'El correo no es válido.';
+      else if (ew) err.textContent = ew;
+      else break;
+    }
+    const si = await confirmar({
+      titulo: 'Guardar cambios de ' + d.nombre_usuario,
+      texto: [el('ul', { class: 'equipo-lista' }, ...cambios.map((k) => el('li', null,
+        el('b', { text: etiquetas[k] + ': ' }), (antes[k] || '—') + ' → ' + (nuevo[k] || '—'))))].concat(
+        cambios.includes('correo') ? [el('div', { class: 'modal-nota', text: 'Con el correo nuevo entrará a la plataforma. Avísale.' })] : []),
+      boton: 'Guardar cambios'
+    });
+    if (!si) return;
+    const ok = await ejecutar(
+      () => sb.rpc('admin_editar_usuario', { p_user_id: d.id, p_nombre_completo: nuevo.nombre, p_nombre_usuario: nuevo.usuario, p_correo: nuevo.correo, p_whatsapp: nuevo.whatsapp }),
+      'Datos de ' + nuevo.usuario + ' guardados.');
+    if (ok) { abrirFicha(d.id); cargarLista(); }
+  }
+
+  // "Ver tableros": el Historial de esa persona (cada tablero con su mapa y su PDF)
+  async function verTablerosDe(d) {
+    const { data, error } = await sb.rpc('admin_historial_usuario', { p_user_id: d.id });
+    if (error) return aviso(traducirErrorDatos(error));
+    const lista = (data || []).slice().sort((a, b) => String(b.completado_en).localeCompare(String(a.completado_en)));
+    const normales = lista.filter((h) => h.repeticion === 0).length;
+    const cuerpo = el('div', { class: 'tab-lista' });
+    if (!lista.length) cuerpo.appendChild(el('p', { class: 'mut', text: d.nombre_usuario + ' todavía no completó ningún tablero.' }));
+    lista.forEach((h) => cuerpo.appendChild(el('div', { class: 'tab-item' },
+      el('div', { class: 'tab-info' },
+        el('b', { text: tituloNivel(h) }),
+        el('span', { class: 'pill ' + (h.repeticion > 0 ? 'pill-amarilla' : 'pill-verde'), text: tipoTablero(h) }),
+        el('span', { class: 'mut', text: formatoFecha(h.completado_en) + ' · ' + h.tareas_recibidas + ' tareas' })),
+      el('div', { class: 'tab-botones' },
+        el('button', { type: 'button', class: 'btn btn-chico', onclick: () => verTableroDialogo(h, null), text: 'Ver tablero' }),
+        el('button', { type: 'button', class: 'bo btn-chico', onclick: () => { dlg.close(); descargarPdfTablero(h, null); }, text: 'Descargar PDF' })))));
+    const viejo = $('dlg-tableros-de');
+    if (viejo) viejo.remove();
+    const dlg = el('dialog', { class: 'modal modal-tablero', id: 'dlg-tableros-de', 'aria-labelledby': 'dlg-tableros-de-t' },
+      el('div', { class: 'modal-cuerpo' },
+        el('h3', { id: 'dlg-tableros-de-t', text: 'Tableros de ' + d.nombre_usuario }),
+        el('div', { class: 'mut', text: lista.length + (lista.length === 1 ? ' tablero completado' : ' tableros completados') + ': ' + normales + (normales === 1 ? ' normal · ' : ' normales · ') + (lista.length - normales) + (lista.length - normales === 1 ? ' repetición' : ' repeticiones') }),
+        cuerpo,
+        el('div', { class: 'modal-botones' }, el('button', { type: 'button', class: 'bo', onclick: () => dlg.close(), text: 'Cerrar' }))));
+    dlg.addEventListener('close', () => dlg.remove());
+    document.body.appendChild(dlg);
+    dlg.showModal();
+  }
+
+  // "Ver en el árbol": abre la pestaña Árbol con esa persona marcada
+  let arbolResaltar = null;
+  function verEnArbol(d) {
+    arbolResaltar = d.id;
+    $('ficha').classList.remove('abierta');
+    document.body.classList.remove('ficha-abierta');
+    $('buscar-arbol').value = d.nombre_usuario;
+    mostrarTab('arbol');
   }
 
   async function cambiarPatrocinador(d) {
@@ -454,7 +568,7 @@
     if (!si) return;
     const ok = await ejecutar(() => sb.rpc('admin_cambiar_patrocinador', { p_user_id: d.id, p_nuevo: elegido.id }),
       'Ahora ' + d.nombre_usuario + ' es referido de ' + elegido.nombre_usuario + '.');
-    if (ok) { abrirFicha(d.id); cargarPerfiles().catch(() => {}); }
+    if (ok) { abrirFicha(d.id); cargarLista(); cargarPerfiles().catch(() => {}); }
   }
 
   async function moverPosicion(d, x) {
@@ -498,7 +612,7 @@
 
   function etiquetaNodo(u) {
     const hijos = (hijosDe[u.id] || []).length;
-    return el('span', { class: 'arbol-et' },
+    return el('span', { class: 'arbol-et' + (u.id === arbolResaltar ? ' resaltado' : '') },
       el('span', { class: 'arbol-num', text: u.numero || '—' }),
       el('button', { type: 'button', class: 'arbol-nombre', onclick: (e) => { e.preventDefault(); abrirFicha(u.id); }, text: u.nombre_usuario }),
       u.nombre_completo ? el('span', { class: 'mut arbol-completo', text: u.nombre_completo }) : null,
@@ -565,7 +679,7 @@
     pintarArbol();
   }
   let tArbol;
-  $('buscar-arbol').addEventListener('input', () => { clearTimeout(tArbol); tArbol = setTimeout(pintarArbol, 200); });
+  $('buscar-arbol').addEventListener('input', () => { arbolResaltar = null; clearTimeout(tArbol); tArbol = setTimeout(pintarArbol, 200); });
   $('btn-arbol-abrir').addEventListener('click', () => {
     // Abre las ramas ya armadas y la primera capa de las demás
     $('arbol').querySelectorAll('details').forEach((d) => { d.open = true; });

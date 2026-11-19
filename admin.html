@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/estilos.css?v=24">
+<link rel="stylesheet" href="css/estilos.css?v=25">
 </head>
 <body class="cargando">
 
@@ -53,36 +53,60 @@
 
       <!-- Usuarios -->
       <section id="pan-usuarios" role="tabpanel" aria-labelledby="tab-usuarios" class="seccion">
-        <div id="usuarios-lista">
-        <div class="card barra-admin">
-          <input class="in buscador" id="buscar-usuarios" type="search" placeholder="Buscar por número, código, nombre, usuario, correo o WhatsApp…" aria-label="Buscar usuarios">
-          <div class="mut" id="cuenta-usuarios"></div>
+        <!-- Resumen de la plataforma -->
+        <div class="stats-admin">
+          <div class="card st"><span class="st-num" id="st-usuarios">…</span><span class="st-txt">Usuarios registrados</span></div>
+          <div class="card st"><span class="st-num num-verde" id="st-tareas">…</span><span class="st-txt">Tareas recibidas (total)</span></div>
+          <div class="card st"><span class="st-num" id="st-tableros">…</span><span class="st-txt">Tableros completados</span></div>
+          <div class="card st"><span class="st-num" id="st-espera">…</span><span class="st-txt">En lista de espera</span><span class="st-det mut" id="st-espera-det"></span></div>
         </div>
-        <p class="mut ayuda-orden">Toca el <b>usuario</b> para abrir su <b>ficha</b>: datos, tareas por nivel, mover posiciones, cambiar patrocinador, contraseña o eliminar la cuenta. Las cuentas de administrador no aparecen en esta lista.</p>
-        <div class="tabla-wrap">
-          <table class="tabla">
-            <thead>
-              <tr>
-                <th scope="col">N.º</th>
-                <th scope="col">Usuario</th>
-                <th scope="col">Nombre completo</th>
-                <th scope="col">Correo</th>
-                <th scope="col">WhatsApp</th>
-                <th scope="col">Código</th>
-                <th scope="col">Invitado por</th>
-                <th scope="col">Fecha</th>
-                <th scope="col">Fundador</th>
-                <th scope="col">Cuenta</th>
-              </tr>
-            </thead>
-            <tbody id="tabla-usuarios">
-              <tr><td colspan="10" class="mut">Cargando usuarios…</td></tr>
-            </tbody>
-          </table>
+
+        <div class="usuarios-layout">
+          <div class="card usuarios-card">
+            <div class="usuarios-barra">
+              <input class="in buscador" id="buscar-usuarios" type="search" placeholder="Buscar por código, nombre, usuario, correo o WhatsApp…" aria-label="Buscar usuarios">
+              <label class="usuarios-filtro"><span class="mut">Nivel</span>
+                <select class="in sel" id="filtro-nivel-usuarios"><option value="">Todos</option></select></label>
+              <label class="usuarios-filtro"><span class="mut">Ordenar</span>
+                <select class="in sel" id="orden-usuarios">
+                  <option value="registro">Fecha de registro</option>
+                  <option value="recibidas">Tareas recibidas</option>
+                  <option value="hechas">Tareas hechas</option>
+                  <option value="nivel">Nivel</option>
+                  <option value="numero">Número (001…)</option>
+                </select></label>
+            </div>
+            <div class="tabla-wrap">
+              <table class="tabla tabla-usuarios">
+                <thead>
+                  <tr>
+                    <th scope="col">Código</th>
+                    <th scope="col">Usuario</th>
+                    <th scope="col">Nombre</th>
+                    <th scope="col">Nivel actual</th>
+                    <th scope="col" class="num">Tableros</th>
+                    <th scope="col" class="num">Tareas recibidas</th>
+                    <th scope="col" class="num">Tareas hechas</th>
+                    <th scope="col">Estado</th>
+                  </tr>
+                </thead>
+                <tbody id="tabla-usuarios">
+                  <tr><td colspan="8" class="mut">Cargando usuarios…</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="paginacion">
+              <span class="mut" id="cuenta-usuarios"></span>
+              <div class="paginacion-botones">
+                <button type="button" class="bo btn-chico" id="pag-ant">← Anterior</button>
+                <span class="mut" id="pag-info"></span>
+                <button type="button" class="bo btn-chico" id="pag-sig">Siguiente →</button>
+              </div>
+            </div>
+          </div>
+          <!-- Ficha del usuario (a la derecha; en celular, en pantalla completa) -->
+          <aside id="ficha" class="card ficha-lateral" aria-live="polite"></aside>
         </div>
-        </div>
-        <!-- Ficha del usuario (se llena desde js/admin.js) -->
-        <div id="ficha" class="pila" hidden></div>
       </section>
 
       <!-- Árbol -->
@@ -256,8 +280,8 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.50.0/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=24"></script>
-<script src="js/comun.js?v=24"></script>
-<script src="js/admin.js?v=24"></script>
+<script src="js/config.js?v=25"></script>
+<script src="js/comun.js?v=25"></script>
+<script src="js/admin.js?v=25"></script>
 </body>
 </html>

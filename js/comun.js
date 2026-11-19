@@ -328,3 +328,130 @@ function crearMapaGrupo(posiciones, opciones) {
   });
   return mapa;
 }
+
+// =====================================================================
+// Íconos de las casillas y tablero completado (Historial del socio y "Ver tableros" del admin)
+// =====================================================================
+// Íconos SVG de las casillas (dibujos fijos del código): "visto" y "quitar persona"
+function svgIcono(tipo) {
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+  svg.setAttribute('fill', 'none');
+  svg.setAttribute('stroke', 'currentColor');
+  svg.setAttribute('stroke-linecap', 'round');
+  svg.setAttribute('stroke-linejoin', 'round');
+  const forma = (nombre, attrs) => {
+    const n = document.createElementNS(NS, nombre);
+    Object.keys(attrs).forEach((k) => n.setAttribute(k, attrs[k]));
+    svg.appendChild(n);
+  };
+  if (tipo === 'visto') {
+    svg.setAttribute('stroke-width', '3');
+    forma('path', { d: 'M5 12.5l4.5 4.5L19 7.5' });
+  } else {
+    // Persona con un signo menos (person-remove)
+    svg.setAttribute('stroke-width', '2');
+    forma('circle', { cx: '9', cy: '8', r: '4' });
+    forma('path', { d: 'M2 20c0-3.6 3.1-6 7-6s7 2.4 7 6' });
+    forma('path', { d: 'M16 11h6' });
+  }
+  return svg;
+}
+
+const POS_REGALADORES = ['regalador_1', 'regalador_2', 'regalador_3', 'regalador_4'];
+const LOGO_SVG = '<svg width="56" height="56" viewBox="0 0 88 88" aria-hidden="true"><rect width="88" height="88" rx="22" fill="#0f3d21"/><path d="M44 66V40" stroke="#facc15" stroke-width="5" stroke-linecap="round"/><path d="M44 42C44 30 34 24 24 25C24 36 31 43 44 42Z" fill="#facc15"/><path d="M44 48C44 38 53 32 63 33C63 43 56 49 44 48Z" fill="#fde68a"/></svg>';
+
+const tipoTablero = (h) => (h.repeticion > 0 ? 'Repetición ' + h.repeticion : 'Normal');
+const tituloNivel = (h) => 'Nivel ' + h.nivel_orden + ' (' + h.nivel + ')';
+
+// El mapa del grupo tal como quedó al completarse: los 7 nombres y las 4 tareas verificadas
+function mapaTablero(h, miId) {
+  const porPos = {};
+  (h.grupo || []).forEach((g) => { porPos[g.posicion] = g; });
+  const posiciones = POSICIONES.map((pos) => {
+    const g = porPos[pos];
+    return {
+      posicion: pos,
+      user_id: g && g.nombre_usuario ? (g.yo ? miId : 'x-' + pos) : null,
+      nombre_usuario: g ? g.nombre_usuario : null,
+      estado: g && g.nombre_usuario && esRegalador(pos) ? 'confirmada' : null
+    };
+  });
+  const mapa = crearMapaGrupo(posiciones, {
+    miId,
+    textoLibre: () => '—',
+    iconos: (p) => (p.user_id && esRegalador(p.posicion)
+      ? el('div', { class: 'cas-iconos' }, el('span', { class: 'cas-ico cas-verificado', role: 'img', title: 'Tarea verificada', 'aria-label': 'Tarea verificada' }, svgIcono('visto')))
+      : null)
+  });
+  mapa.classList.add('mapa-tablero');
+  mapa.querySelectorAll('.casilla').forEach((c) => {
+    const pos = c.dataset.pos;
+    const est = c.querySelector('.cas-estado');
+    if (!est) return;
+    if (pos === 'recibidor') est.textContent = 'Recibió ' + h.tareas_recibidas + ' tareas';
+    else if (esRegalador(pos)) est.textContent = porPos[pos] && porPos[pos].nombre_usuario ? 'Tarea verificada' : 'Sin datos';
+    else est.textContent = porPos[pos] && porPos[pos].nombre_usuario ? '' : 'Sin datos'; // el rol ya se ve arriba
+  });
+  return mapa;
+}
+
+function cabeceraTablero(h) {
+  return el('div', { class: 'tablero-cab' },
+    el('div', { class: 'nivel-circulo hn-circulo', style: 'background:' + colorNivel({ nombre: h.nivel }), 'aria-hidden': 'true', text: h.nivel.charAt(0) }),
+    el('div', { class: 'hn-titulo' },
+      el('b', { text: tituloNivel(h) }),
+      el('span', { class: 'mut', text: 'Completado el ' + formatoFecha(h.completado_en) })),
+    el('span', { class: 'pill ' + (h.repeticion > 0 ? 'pill-amarilla' : 'pill-verde'), text: tipoTablero(h) + (h.grupo_fundador ? ' · grupo fundador' : '') }));
+}
+
+function verTableroDialogo(h, miId) {
+  const viejo = $('dlg-tablero');
+  if (viejo) viejo.remove();
+  const dlg = el('dialog', { class: 'modal modal-tablero', id: 'dlg-tablero', 'aria-labelledby': 'dlg-tablero-titulo' },
+    el('div', { class: 'modal-cuerpo' },
+      el('h3', { id: 'dlg-tablero-titulo', text: 'Tablero · ' + tituloNivel(h) }),
+      cabeceraTablero(h),
+      mapaTablero(h, miId),
+      el('div', { class: 'hn-tareas' }, el('b', { text: String(h.tareas_recibidas) }), ' tareas recibidas'),
+      h.foto_completa ? null : el('div', { class: 'mut hn-nota', text: 'Completaste este nivel antes de que se guardara el grupo completo: solo se muestran los nombres que se pudieron recuperar.' }),
+      el('div', { class: 'modal-botones' },
+        el('button', { type: 'button', class: 'bo', onclick: () => dlg.close(), text: 'Cerrar' }),
+        el('button', { type: 'button', class: 'btn', onclick: () => { dlg.close(); descargarPdfTablero(h, miId); }, text: 'Descargar PDF' }))));
+  dlg.addEventListener('close', () => dlg.remove());
+  document.body.appendChild(dlg);
+  dlg.showModal();
+}
+
+// "Descargar PDF": hoja con el logo, el nivel, la fecha y el tablero, con la vista de impresión
+// del navegador (ahí se elige "Guardar como PDF")
+function descargarPdfTablero(h, miId) {
+  const viejo = $('zona-impresion');
+  if (viejo) viejo.remove();
+  const logo = el('span', { class: 'imp-logo' });
+  logo.innerHTML = LOGO_SVG; // dibujo fijo del código (no es texto de usuarios)
+  const zona = el('div', { id: 'zona-impresion' },
+    el('div', { class: 'imp-cab' }, logo,
+      el('div', null, el('div', { class: 'imp-marca', text: 'Siembra tu Futuro' }), el('div', { class: 'imp-sub', text: 'Tablero completado' }))),
+    el('h1', { class: 'imp-titulo', text: tituloNivel(h) + ' · ' + tipoTablero(h) }),
+    el('p', { class: 'imp-fecha', text: 'Completado el ' + formatoFecha(h.completado_en) + (h.grupo_fundador ? ' · grupo fundador' : '') }),
+    mapaTablero(h, miId),
+    el('p', { class: 'imp-tareas' }, el('b', { text: String(h.tareas_recibidas) }), ' tareas recibidas y verificadas'),
+    el('p', { class: 'imp-pie', text: 'Comunidad de ayuda mutua · Documento generado el ' + formatoFecha(new Date().toISOString()) }));
+  document.body.appendChild(zona);
+  document.body.classList.add('imprimiendo');
+  const titulo = document.title;
+  document.title = 'Tablero ' + h.nivel + ' ' + tipoTablero(h) + ' ' + String(h.completado_en).slice(0, 10);
+  const fin = () => {
+    document.body.classList.remove('imprimiendo');
+    zona.remove();
+    document.title = titulo;
+    window.removeEventListener('afterprint', fin);
+  };
+  window.addEventListener('afterprint', fin);
+  setTimeout(() => window.print(), 50);
+}
+

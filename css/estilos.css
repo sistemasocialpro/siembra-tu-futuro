@@ -812,6 +812,103 @@ a.soporte-card:hover, a.soporte-card:focus-visible { border-color: var(--verde);
 #form-info .in#ip-usuario-in[readonly] { background: #f8faf9; border-color: transparent; }
 #form-info.editando .in:not([readonly]):not(:disabled) { background: #fff; border-color: var(--verde); }
 
+/* Administración · Usuarios: resumen, tabla y ficha lateral */
+.stats-admin { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 16px; }
+.stats-admin .st { margin: 0; display: flex; flex-direction: column; gap: 2px; padding: 16px 18px; border-top: 4px solid var(--verde); }
+.st-num { font-size: 28px; font-weight: 800; color: var(--verde-noche); line-height: 1.1; }
+.st-txt { font-size: 13px; font-weight: 600; color: var(--mut); }
+.st-det { font-size: 11px; }
+.num-verde { color: var(--verde) !important; font-weight: 800; }
+.usuarios-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+.usuarios-card { margin: 0; padding: 16px; min-width: 0; }
+.usuarios-barra { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+.usuarios-barra .buscador { flex: 1 1 240px; }
+.usuarios-filtro { display: flex; align-items: center; gap: 6px; }
+.usuarios-filtro .sel { width: auto; padding-top: 8px; padding-bottom: 8px; }
+/* Compacta para que entren las 8 columnas junto a la ficha (los textos largos pasan de línea) */
+.tabla-usuarios { font-size: 12.5px; }
+.tabla-usuarios th, .tabla-usuarios td { padding: 8px 6px; vertical-align: middle; white-space: normal; }
+.tabla-usuarios th { font-size: 10.5px; line-height: 1.25; letter-spacing: .02em; }
+.tabla-usuarios td.num { text-align: right; white-space: nowrap; }
+.tabla-usuarios th.num { text-align: right; width: 56px; }
+.tabla-usuarios .pill { font-size: 11px; padding: 3px 8px; white-space: normal; line-height: 1.2; display: inline-block; }
+.fila-usuario { cursor: pointer; }
+.fila-usuario:hover td { background: #f0fdf4; }
+.fila-usuario:focus-visible { outline: 3px solid var(--verde); outline-offset: -3px; }
+.fila-usuario.sel td { background: #dcfce7; }
+.fila-usuario.sel td:first-child { box-shadow: inset 4px 0 0 var(--verde); }
+.u-num { font-weight: 800; font-family: ui-monospace, monospace; }
+.u-codigo { font-size: 11px; color: var(--mut); }
+.u-usuario { overflow-wrap: anywhere; }
+.u-fundador { color: var(--amarillo-osc); margin-left: 4px; }
+.u-nombre { overflow-wrap: anywhere; }
+.u-nivel { display: inline-flex; align-items: center; gap: 5px; }
+.u-punto { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+.pill-roja { background: #fee2e2; color: #b91c1c; }
+.paginacion { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.paginacion-botones { display: flex; align-items: center; gap: 10px; }
+.ficha-lateral { margin: 0; padding: 18px; position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+.ficha-vacia { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 40px 10px; }
+.ficha-vacia-ico { font-size: 34px; width: 64px; height: 64px; border-radius: 50%; background: var(--input); display: flex; align-items: center; justify-content: center; }
+.ficha-cab { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; align-items: center; background: var(--verde-noche); color: #fff; border-radius: 16px; padding: 16px; position: relative; }
+.ficha-cab h3 { margin: 0; font-size: 19px; overflow-wrap: anywhere; padding-right: 28px; }
+.ficha-avatar { width: 48px; height: 48px; border-radius: 50%; background: var(--amarillo); color: var(--verde-noche); font-weight: 800; font-size: 22px; display: flex; align-items: center; justify-content: center; grid-row: span 2; }
+.ficha-cab .ficha-num { font-size: 12px; opacity: .85; }
+.ficha-cab .ficha-pills { grid-column: 1 / -1; margin-top: 6px; }
+.ficha-cerrar { position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; border-radius: 50%; border: 0; background: rgba(255, 255, 255, .15); color: #fff; font-size: 14px; cursor: pointer; }
+.ficha-cerrar:hover { background: rgba(255, 255, 255, .28); }
+.ficha-totales3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.ficha-totales3 .ft { background: var(--input); border-radius: 12px; padding: 10px 8px; text-align: center; display: flex; flex-direction: column; }
+.ficha-totales3 .ft b { font-size: 22px; color: var(--verde-noche); }
+.ficha-totales3 .ft span { font-size: 11px; font-weight: 600; color: var(--mut); }
+.ficha-acciones { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.ficha-acciones .btn, .ficha-acciones .bo, .ficha-acciones .bt-salir { width: 100%; }
+.ficha-sec { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--borde); padding-top: 12px; }
+.ficha-sec h4 { margin: 0; font-size: 14px; text-transform: uppercase; letter-spacing: .04em; color: var(--verde-osc); }
+.ficha-lateral .ficha-datos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ficha-refs { display: flex; flex-wrap: wrap; gap: 6px; }
+.ref-chip { border: 1px solid var(--verde); background: #f0fdf4; color: var(--verde-osc); border-radius: 99px; padding: 4px 10px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.ref-chip.otro { border-color: var(--borde); background: #fff; color: var(--mut); }
+.tabla-niveles-ficha { font-size: 13px; }
+.tabla-niveles-ficha th, .tabla-niveles-ficha td { padding: 8px 5px; white-space: normal; }
+.tabla-niveles-ficha th { font-size: 11px; line-height: 1.25; letter-spacing: 0; text-transform: none; }
+.tabla-niveles-ficha td:first-child { white-space: nowrap; }
+.tabla-niveles-ficha abbr { text-decoration: none; }
+.tabla-niveles-ficha .num { text-align: center; }
+.barra-celda { display: flex; align-items: center; gap: 6px; min-width: 64px; }
+.barra { flex: 1; height: 10px; border-radius: 99px; background: #dcfce7; overflow: hidden; }
+.barra span { display: block; height: 100%; border-radius: 99px; background: var(--verde); }
+.arbol-et.resaltado { background: #fef9c3; border-radius: 8px; padding: 2px 6px; box-shadow: 0 0 0 2px var(--amarillo); }
+@media (max-width: 1099px) {
+  .usuarios-layout { grid-template-columns: minmax(0, 1fr); }
+  /* En pantallas angostas la ficha se abre en pantalla completa al tocar una fila */
+  .ficha-lateral { display: none; }
+  .ficha-lateral.abierta { display: flex; position: fixed; inset: 0; top: 0; max-height: none; border-radius: 0; z-index: 60; overflow-y: auto; padding: 16px; }
+  body.ficha-abierta { overflow: hidden; }
+}
+/* Celular: cada fila de la tabla es una tarjeta (código, usuario y estado arriba; nombre y nivel; los 3 números) */
+@media (max-width: 700px) {
+  .tabla-usuarios thead { display: none; }
+  .tabla-usuarios, .tabla-usuarios tbody { display: block; }
+  .tabla-usuarios tr.fila-usuario { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 10px; padding: 12px 10px; border-bottom: 1px solid var(--linea); }
+  .tabla-usuarios tr.fila-usuario td { display: block; padding: 0; border: 0; background: none !important; }
+  .tabla-usuarios tr.fila-usuario.sel { background: #dcfce7; box-shadow: inset 4px 0 0 var(--verde); }
+  .tabla-usuarios tr.fila-usuario td:nth-child(1) { grid-column: 1; grid-row: 1; box-shadow: none; }
+  .tabla-usuarios tr.fila-usuario td:nth-child(2) { grid-column: 2; grid-row: 1; font-size: 14px; }
+  .tabla-usuarios tr.fila-usuario td:nth-child(8) { grid-column: 3; grid-row: 1; text-align: right; }
+  .tabla-usuarios tr.fila-usuario td:nth-child(3) { grid-column: 1 / -1; color: var(--mut); }
+  .tabla-usuarios tr.fila-usuario td:nth-child(4) { grid-column: 1 / -1; }
+  .tabla-usuarios tr.fila-usuario td.num { text-align: left; background: var(--input) !important; border-radius: 10px; padding: 6px 8px; font-size: 16px; font-weight: 800; }
+  .tabla-usuarios tr.fila-usuario td.num::before { content: attr(data-et); display: block; font-size: 10.5px; font-weight: 600; color: var(--mut); }
+  .tabla-usuarios tr:not(.fila-usuario) td { display: block; }
+}
+@media (max-width: 860px) {
+  .stats-admin { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .st-num { font-size: 24px; }
+  .usuarios-filtro { flex: 1 1 140px; }
+  .usuarios-filtro .sel { flex: 1; min-width: 0; }
+}
+
 /* Administración: ficha del usuario */
 .link-ficha { background: none; border: 0; padding: 0; font: inherit; font-weight: 800; color: var(--verde-osc); text-decoration: underline; cursor: pointer; text-align: left; }
 .ficha-volver { align-self: flex-start; }
