@@ -20,6 +20,8 @@
   PAISES.forEach((nombre) => selPais.appendChild(el('option', { value: nombre, text: nombre })));
 
   const msgInfo = $('info-form-msg');
+  // Datos de acceso (correo actual y, si pidió cambiarlo, el correo nuevo pendiente de confirmar)
+  let usuarioAuth = session.user;
 
   // ---------- Cargar datos ----------
   let perfil = null;
@@ -57,7 +59,10 @@
   function pintarFormulario() {
     $('ip-nombre').value = perfil.nombre_completo || '';
     $('ip-usuario-in').value = perfil.nombre_usuario;
-    $('ip-correo').value = session.user.email || '';
+    $('ip-correo').value = usuarioAuth.email || '';
+    $('ayuda-ip-correo').textContent = usuarioAuth.new_email
+      ? 'Pendiente de confirmar: ' + usuarioAuth.new_email + '. Abre el enlace que te enviamos por correo.'
+      : '';
     $('ip-acepta').checked = !!perfil.acepta_whatsapp_visible;
 
     const pais = perfil.pais || 'Ecuador';
@@ -68,6 +73,31 @@
     $('ip-wa').value = perfil.whatsapp || '';
     vistaPreviaWa();
   }
+
+  // ---------- Modo lectura / "Editar mis datos" ----------
+  const EDITABLES = ['ip-nombre', 'ip-wa', 'ip-correo'];
+  let editando = false;
+  function modoEdicion(on) {
+    editando = on;
+    EDITABLES.forEach((id) => { $(id).readOnly = !on; });
+    selPais.disabled = !on;
+    $('ip-acepta').disabled = !on;
+    $('form-info').classList.toggle('editando', on);
+    $('btn-editar').hidden = on;
+    $('btn-cancelar').hidden = !on;
+    $('btn-info').hidden = !on;
+    if (!on) ['ip-nombre', 'ip-wa', 'ip-correo'].forEach((id) => error(id, ''));
+  }
+  $('btn-editar').addEventListener('click', () => {
+    msgInfo.hidden = true;
+    modoEdicion(true);
+    $('ip-nombre').focus();
+  });
+  $('btn-cancelar').addEventListener('click', () => {
+    msgInfo.hidden = true;
+    pintarFormulario();
+    modoEdicion(false);
+  });
 
   // "Se guardará como +593991234567" mientras escribe (misma regla que la base de datos)
   const AYUDA_WA = 'Ecuador: 0999999999. Otros países: + y código de país.';
@@ -89,29 +119,78 @@
 
   $('form-info').addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!editando) return;
     msgInfo.hidden = true;
     const nombre = $('ip-nombre').value.trim().replace(/\s+/g, ' ');
     // Se envía ya normalizado (+593…); la base vuelve a normalizar con normalizar_whatsapp()
     const whatsapp = normalizarWhatsApp($('ip-wa').value, selPais.value);
+    const pais = selPais.value === 'Otro' ? null : selPais.value;
+    const correo = $('ip-correo').value.trim().toLowerCase();
 
+    // Misma validación que el registro
     const okNombre = error('ip-nombre',
-      !nombre ? 'Escribe tu nombre completo.'
+      !nombre ? 'Escribe tu nombre y apellido.'
         : nombre.length < 3 ? 'El nombre es muy corto.'
           : !/\p{L}/u.test(nombre) ? 'El nombre debe contener letras.' : '');
     const okWa = error('ip-wa', errorWhatsApp($('ip-wa').value, selPais.value));
-    if (!okNombre || !okWa) return mostrarAviso(msgInfo, 'Revisa los campos marcados en rojo.');
+    const okCorreo = error('ip-correo', !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(correo) ? 'Escribe un correo válido.' : '');
+    if (!okNombre || !okWa || !okCorreo) return mostrarAviso(msgInfo, 'Revisa los campos marcados en rojo.');
+
+    // Qué cambió (con el valor anterior, para confirmar)
+    const cambios = [];
+    if (nombre !== (perfil.nombre_completo || '')) cambios.push(['Nombre y apellido', perfil.nombre_completo, nombre]);
+    if (whatsapp !== (perfil.whatsapp || '')) cambios.push(['WhatsApp', perfil.whatsapp, whatsapp]);
+    if ((pais || 'Otro') !== (perfil.pais || 'Ecuador')) cambios.push(['País', perfil.pais, pais || 'Otro']);
+    if ($('ip-acepta').checked !== !!perfil.acepta_whatsapp_visible) {
+      cambios.push(['WhatsApp visible para tu recibidor', perfil.acepta_whatsapp_visible ? 'Sí' : 'No', $('ip-acepta').checked ? 'Sí' : 'No']);
+    }
+    const cambiaPerfil = cambios.length > 0;
+    const cambiaCorreo = correo !== String(usuarioAuth.email || '').toLowerCase();
+    if (cambiaCorreo) cambios.push(['Correo', usuarioAuth.email, correo]);
+    if (!cambios.length) return mostrarAviso(msgInfo, 'No cambiaste ningún dato.');
+
+    const si = await confirmar({
+      titulo: 'Guardar mis datos',
+      texto: [el('ul', { class: 'equipo-lista' }, ...cambios.map(([q, antes, ahora]) => el('li', null,
+        el('b', { text: q + ': ' }), (antes || '—') + ' → ' + (ahora || '—'))))].concat(cambiaCorreo
+        ? [el('div', { class: 'modal-nota', text: 'Para cambiar tu correo te enviaremos un enlace de confirmación. Hasta que lo abras seguirás entrando con tu correo actual.' })]
+        : []),
+      boton: 'Guardar cambios'
+    });
+    if (!si) return;
 
     const btn = $('btn-info');
     btn.disabled = true;
-    const { data, error: err } = await sb.rpc('actualizar_mi_perfil', {
-      p_nombre: nombre, p_whatsapp: whatsapp, p_pais: selPais.value === 'Otro' ? null : selPais.value,
-      p_acepta_whatsapp: $('ip-acepta').checked
-    });
-    btn.disabled = false;
-    if (err) return mostrarAviso(msgInfo, traducirErrorDatos(err));
-    perfil = Object.assign(perfil, data);
-    pintarFormulario();
-    mostrarAviso(msgInfo, 'Tu información se actualizó.', 'ok');
+    try {
+      if (cambiaPerfil) {
+        const { data, error: err } = await sb.rpc('actualizar_mi_perfil', {
+          p_nombre: nombre, p_whatsapp: whatsapp, p_pais: pais, p_acepta_whatsapp: $('ip-acepta').checked
+        });
+        if (err) throw err;
+        perfil = Object.assign(perfil, data);
+      }
+      let textoCorreo = '';
+      if (cambiaCorreo) {
+        const r = await sb.auth.updateUser({ email: correo }, { emailRedirectTo: new URL('info-personal.html', location.href).href });
+        if (r.error) {
+          const t = String(r.error.message || '');
+          throw new Error(/already|registered|exists/i.test(t) ? 'Ese correo ya lo usa otra cuenta.'
+            : /rate|too many|seconds/i.test(t) ? 'Pediste el cambio hace muy poco. Espera unos minutos e inténtalo de nuevo.'
+              : /invalid/i.test(t) ? 'Escribe un correo válido.' : t);
+        }
+        if (r.data && r.data.user) usuarioAuth = r.data.user;
+        textoCorreo = String(usuarioAuth.email || '').toLowerCase() === correo
+          ? ' Tu correo ya es ' + correo + '.'
+          : ' Te enviamos un correo a ' + correo + ' para confirmar el cambio: abre el enlace y listo.';
+      }
+      pintarFormulario();
+      modoEdicion(false);
+      mostrarAviso(msgInfo, (cambiaPerfil ? 'Tus datos se actualizaron.' : 'Listo.') + textoCorreo, 'ok');
+    } catch (err) {
+      mostrarAviso(msgInfo, err && err.code ? traducirErrorDatos(err) : String((err && err.message) || err));
+    } finally {
+      btn.disabled = false;
+    }
   });
 
   // ---------- Cambiar contraseña ----------
@@ -180,5 +259,11 @@
     location.replace('index.html?cuenta=eliminada');
   });
 
-  cargar();
+  // Correo vigente y cambio pendiente (por ejemplo, al volver desde el enlace de confirmación)
+  try {
+    const { data } = await sb.auth.getUser();
+    if (data && data.user) usuarioAuth = data.user;
+  } catch (e) { /* se usa la sesión guardada */ }
+  await cargar();
+  modoEdicion(false);
 })();

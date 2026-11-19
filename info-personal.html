@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/estilos.css?v=21">
+<link rel="stylesheet" href="css/estilos.css?v=22">
 </head>
 <body class="cargando">
 
@@ -55,38 +55,44 @@
             <h3>Información del usuario</h3>
             <div class="fila-2">
               <div class="campo">
-                <label class="lb" for="ip-nombre">Nombre completo</label>
-                <input class="in" id="ip-nombre" type="text" autocomplete="name" maxlength="80" aria-describedby="err-ip-nombre">
+                <label class="lb" for="ip-nombre">Nombre y apellido</label>
+                <input class="in" id="ip-nombre" type="text" autocomplete="name" maxlength="80" readonly aria-describedby="err-ip-nombre">
                 <span class="err" id="err-ip-nombre" aria-live="polite"></span>
               </div>
               <div class="campo">
                 <label class="lb" for="ip-usuario-in">Usuario</label>
                 <input class="in" id="ip-usuario-in" type="text" readonly aria-describedby="ayuda-ip-usuario">
-                <span class="ayuda" id="ayuda-ip-usuario">Solo lo cambia el administrador.</span>
+                <span class="ayuda" id="ayuda-ip-usuario">Para cambiar tu usuario escribe a <a class="link" href="soporte.html">Soporte</a>.</span>
               </div>
             </div>
             <div class="fila-2">
               <div class="campo">
                 <label class="lb" for="ip-correo">Correo</label>
-                <input class="in" id="ip-correo" type="email" readonly>
+                <input class="in" id="ip-correo" type="email" autocomplete="email" maxlength="120" readonly aria-describedby="ayuda-ip-correo err-ip-correo">
+                <span class="ayuda" id="ayuda-ip-correo" aria-live="polite"></span>
+                <span class="err" id="err-ip-correo" aria-live="polite"></span>
               </div>
               <div class="campo">
                 <label class="lb" for="ip-pais">País</label>
-                <select class="in sel" id="ip-pais"></select>
+                <select class="in sel" id="ip-pais" disabled></select>
               </div>
             </div>
             <div class="campo">
               <label class="lb" for="ip-wa">WhatsApp</label>
-              <input class="in" id="ip-wa" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" placeholder="0999999999" aria-describedby="ayuda-ip-wa err-ip-wa">
+              <input class="in" id="ip-wa" type="tel" inputmode="tel" autocomplete="tel" maxlength="20" placeholder="0999999999" readonly aria-describedby="ayuda-ip-wa err-ip-wa">
               <span class="ayuda" id="ayuda-ip-wa" aria-live="polite">Ecuador: 0999999999. Otros países: + y código de país.</span>
               <span class="err" id="err-ip-wa" aria-live="polite"></span>
             </div>
             <div class="campo">
-              <label class="check" for="ip-acepta"><input type="checkbox" id="ip-acepta"> <span>Permito que el recibidor de mi grupo vea mi WhatsApp</span></label>
+              <label class="check" for="ip-acepta"><input type="checkbox" id="ip-acepta" disabled> <span>Permito que el recibidor de mi grupo vea mi WhatsApp</span></label>
               <span class="ayuda">Tu recibidor siempre puede ser contactado por ti; si no aceptas, tú escribes primero.</span>
             </div>
             <div id="info-form-msg" class="msg" role="alert" hidden></div>
-            <div class="botones botones-fin"><button type="submit" class="btn" id="btn-info">Actualizar información</button></div>
+            <div class="botones botones-fin">
+              <button type="button" class="btn" id="btn-editar">Editar mis datos</button>
+              <button type="button" class="bo" id="btn-cancelar" hidden>Cancelar</button>
+              <button type="submit" class="btn" id="btn-info" hidden>Guardar cambios</button>
+            </div>
           </form>
 
           <form class="card form-info" id="form-pass" novalidate>
@@ -129,9 +135,9 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.50.0/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=21"></script>
-<script src="js/comun.js?v=21"></script>
-<script src="js/pagina.js?v=21"></script>
-<script src="js/info-personal.js?v=21"></script>
+<script src="js/config.js?v=22"></script>
+<script src="js/comun.js?v=22"></script>
+<script src="js/pagina.js?v=22"></script>
+<script src="js/info-personal.js?v=22"></script>
 </body>
 </html>

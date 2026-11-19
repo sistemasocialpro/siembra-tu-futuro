@@ -803,6 +803,12 @@ a.soporte-card:hover, a.soporte-card:focus-visible { border-color: var(--verde);
 .col-invitacion .card-invitacion { flex: none; }
 .reserva-card { display: flex; flex-direction: column; gap: 8px; border: 2px solid var(--amarillo); }
 
+/* Info personal: datos en modo lectura hasta tocar "Editar mis datos" */
+@media (max-width: 600px) { .form-info .fila-2 { grid-template-columns: minmax(0, 1fr); } }
+#form-info:not(.editando) .in[readonly], #form-info:not(.editando) .sel:disabled { background: #f8faf9; border-color: transparent; color: var(--texto); opacity: 1; cursor: default; }
+#form-info .in#ip-usuario-in[readonly] { background: #f8faf9; border-color: transparent; }
+#form-info.editando .in:not([readonly]):not(:disabled) { background: #fff; border-color: var(--verde); }
+
 /* Administración: ficha del usuario */
 .link-ficha { background: none; border: 0; padding: 0; font: inherit; font-weight: 800; color: var(--verde-osc); text-decoration: underline; cursor: pointer; text-align: left; }
 .ficha-volver { align-self: flex-start; }
