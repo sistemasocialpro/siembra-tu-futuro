@@ -244,6 +244,35 @@
     refrescar();
   }
 
+  // Íconos SVG de las casillas (dibujos fijos del código): "visto" y "quitar persona"
+  function svgIcono(tipo) {
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('focusable', 'false');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+    const forma = (nombre, attrs) => {
+      const n = document.createElementNS(NS, nombre);
+      Object.keys(attrs).forEach((k) => n.setAttribute(k, attrs[k]));
+      svg.appendChild(n);
+    };
+    if (tipo === 'visto') {
+      svg.setAttribute('stroke-width', '3');
+      forma('path', { d: 'M5 12.5l4.5 4.5L19 7.5' });
+    } else {
+      // Persona con un signo menos (person-remove)
+      svg.setAttribute('stroke-width', '2');
+      forma('circle', { cx: '9', cy: '8', r: '4' });
+      forma('path', { d: 'M2 20c0-3.6 3.1-6 7-6s7 2.4 7 6' });
+      forma('path', { d: 'M16 11h6' });
+    }
+    return svg;
+  }
+
   // (29) El patrocinador elimina a su referido de esta casilla
   async function eliminarDeCasilla(p, nivelNombre) {
     const si = await confirmar({
@@ -1124,12 +1153,12 @@
           if (p.user_id && esRegalador(p.posicion) && p.estado === 'tarea_hecha') {
             ic.push(soyRecibidor
               ? el('button', { type: 'button', class: 'cas-ico cas-visto', title: 'Aprobar la tarea de ' + (p.nombre_usuario || ''),
-                  'aria-label': 'Aprobar la tarea de ' + (p.nombre_usuario || 'este regalador'), onclick: () => aprobar(p), text: '✓' })
-              : el('span', { class: 'cas-ico cas-visto', title: 'Tarea hecha, pendiente de aprobar', 'aria-label': 'Tarea hecha, pendiente de aprobar', text: '✓' }));
+                  'aria-label': 'Aprobar la tarea de ' + (p.nombre_usuario || 'este regalador'), onclick: () => aprobar(p) }, svgIcono('visto'))
+              : el('span', { class: 'cas-ico cas-visto', role: 'img', title: 'Tarea hecha, pendiente de aprobar', 'aria-label': 'Tarea hecha, pendiente de aprobar' }, svgIcono('visto')));
           }
           if ((accCas[p.posicion] || {}).puedo_eliminar) {
             ic.push(el('button', { type: 'button', class: 'cas-ico cas-eliminar', title: 'Eliminar a ' + (p.nombre_usuario || ''),
-              'aria-label': 'Eliminar a ' + (p.nombre_usuario || 'esta persona') + ' de esta casilla', onclick: () => eliminarDeCasilla(p, nivel.nombre), text: '✕' }));
+              'aria-label': 'Eliminar a ' + (p.nombre_usuario || 'esta persona') + ' de esta casilla', onclick: () => eliminarDeCasilla(p, nivel.nombre) }, svgIcono('quitar-persona')));
           }
           return ic.length ? el('div', { class: 'cas-iconos' }, ...ic) : null;
         },

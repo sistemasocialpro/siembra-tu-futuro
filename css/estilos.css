@@ -420,16 +420,20 @@ a.btn-nivel { display: block; text-align: center; text-decoration: none; }
 .cas-wa { display: block; font-size: 12px; font-weight: 700; color: var(--verde-osc); text-decoration: underline; overflow-wrap: anywhere; }
 .cas-wa.sin { font-weight: 500; text-decoration: none; opacity: .75; }
 /* Íconos de la casilla: visto amarillo (tarea hecha) y eliminar persona */
-.cas-iconos { position: absolute; top: -9px; right: -9px; display: flex; gap: 4px; z-index: 2; }
+/* Abajo y centrados dentro de la casilla, uno al lado del otro (si no caben, pasan a la línea de abajo) */
+.cas-iconos { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; }
 .cas-ico {
-  width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
-  font-size: 15px; font-weight: 900; line-height: 1; border: 2px solid var(--verde-noche); padding: 0; font-family: inherit;
+  width: 34px; height: 34px; flex: none; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  border: 0; padding: 0; font: inherit; line-height: 1;
 }
-button.cas-ico { cursor: pointer; }
+.cas-ico svg { width: 20px; height: 20px; display: block; }
+button.cas-ico { cursor: pointer; transition: transform .12s ease, background .12s ease; }
+button.cas-ico:hover { transform: scale(1.06); }
+button.cas-ico:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
 .cas-visto { background: var(--amarillo); color: var(--verde-noche); }
 button.cas-visto:hover { background: #fde047; }
-.cas-eliminar { background: #fee2e2; color: #b91c1c; font-size: 13px; }
-button.cas-eliminar:hover { background: #fecaca; }
+.cas-eliminar { background: rgba(248, 113, 113, .16); color: #f87171; }
+button.cas-eliminar:hover { background: rgba(248, 113, 113, .28); }
 /* Grupo repetido: a quién sigue cada casilla y, más chico, quién la invitó */
 .cas-sigue { width: 100%; font-size: 11px; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
 .cas-invitado { width: 100%; font-size: 10px; opacity: .75; line-height: 1.2; overflow-wrap: anywhere; }
@@ -642,9 +646,7 @@ body.trabajando, body.trabajando button { cursor: wait; }
   }
   .cas-pista { font-size: 8px; }
   .cas-wa { font-size: 8px; letter-spacing: -.02em; }
-  .cas-iconos { top: -8px; right: -6px; gap: 2px; }
-  .cas-ico { width: 20px; height: 20px; font-size: 12px; border-width: 1.5px; }
-  .cas-eliminar { font-size: 10px; }
+  .cas-iconos { margin-top: 4px; }
   .cas-sigue { font-size: 8.5px; letter-spacing: -.02em; }
   .cas-invitado { font-size: 7.5px; letter-spacing: -.02em; }
   .grupo-cabecera { padding: 16px; }
