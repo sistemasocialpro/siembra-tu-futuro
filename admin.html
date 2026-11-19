@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/estilos.css?v=20">
+<link rel="stylesheet" href="css/estilos.css?v=21">
 </head>
 <body class="cargando">
 
@@ -42,24 +42,28 @@
     <main class="mn">
       <div class="tabs tabs-admin" role="tablist" aria-label="Administración">
         <button type="button" class="tab" role="tab" id="tab-usuarios" aria-controls="pan-usuarios" aria-selected="true" data-tab="usuarios">Usuarios</button>
+        <button type="button" class="tab" role="tab" id="tab-arbol" aria-controls="pan-arbol" aria-selected="false" data-tab="arbol">Árbol</button>
         <button type="button" class="tab" role="tab" id="tab-grupos" aria-controls="pan-grupos" aria-selected="false" data-tab="grupos">Grupos</button>
         <button type="button" class="tab" role="tab" id="tab-espera" aria-controls="pan-espera" aria-selected="false" data-tab="espera">Lista de espera <span class="badge" id="badge-espera" hidden></span></button>
         <button type="button" class="tab" role="tab" id="tab-config" aria-controls="pan-config" aria-selected="false" data-tab="config">Configuración</button>
+        <button type="button" class="tab" role="tab" id="tab-registro" aria-controls="pan-registro" aria-selected="false" data-tab="registro">Registro</button>
       </div>
 
       <div id="admin-msg" class="msg" role="alert" hidden></div>
 
       <!-- Usuarios -->
       <section id="pan-usuarios" role="tabpanel" aria-labelledby="tab-usuarios" class="seccion">
+        <div id="usuarios-lista">
         <div class="card barra-admin">
-          <input class="in buscador" id="buscar-usuarios" type="search" placeholder="Buscar por usuario, nombre, correo, WhatsApp o código…" aria-label="Buscar usuarios">
+          <input class="in buscador" id="buscar-usuarios" type="search" placeholder="Buscar por número, código, nombre, usuario, correo o WhatsApp…" aria-label="Buscar usuarios">
           <div class="mut" id="cuenta-usuarios"></div>
         </div>
-        <p class="mut ayuda-orden">Para mover a alguien de casilla usa la pestaña <b>Grupos</b> (Asignar, Reemplazar o Quitar). Aquí puedes ponerle una <b>contraseña nueva</b> o <b>eliminar su cuenta</b>. Las cuentas de administrador no aparecen en esta lista.</p>
+        <p class="mut ayuda-orden">Toca el <b>usuario</b> para abrir su <b>ficha</b>: datos, tareas por nivel, mover posiciones, cambiar patrocinador, contraseña o eliminar la cuenta. Las cuentas de administrador no aparecen en esta lista.</p>
         <div class="tabla-wrap">
           <table class="tabla">
             <thead>
               <tr>
+                <th scope="col">N.º</th>
                 <th scope="col">Usuario</th>
                 <th scope="col">Nombre completo</th>
                 <th scope="col">Correo</th>
@@ -72,10 +76,36 @@
               </tr>
             </thead>
             <tbody id="tabla-usuarios">
-              <tr><td colspan="9" class="mut">Cargando usuarios…</td></tr>
+              <tr><td colspan="10" class="mut">Cargando usuarios…</td></tr>
             </tbody>
           </table>
         </div>
+        </div>
+        <!-- Ficha del usuario (se llena desde js/admin.js) -->
+        <div id="ficha" class="pila" hidden></div>
+      </section>
+
+      <!-- Árbol -->
+      <section id="pan-arbol" role="tabpanel" aria-labelledby="tab-arbol" class="seccion" hidden>
+        <div class="card barra-admin">
+          <input class="in buscador" id="buscar-arbol" type="search" placeholder="Buscar en el árbol por número, usuario o nombre…" aria-label="Buscar en el árbol">
+          <div class="arbol-acciones">
+            <button type="button" class="bo btn-chico" id="btn-arbol-abrir">Abrir ramas</button>
+            <button type="button" class="bo btn-chico" id="btn-arbol-cerrar">Cerrar todo</button>
+          </div>
+          <div class="mut" id="cuenta-arbol"></div>
+        </div>
+        <div class="card arbol-card"><div id="arbol" class="arbol" aria-live="polite"></div></div>
+      </section>
+
+      <!-- Registro de cambios del administrador -->
+      <section id="pan-registro" role="tabpanel" aria-labelledby="tab-registro" class="seccion" hidden>
+        <div class="card barra-admin">
+          <input class="in buscador" id="buscar-registro" type="search" placeholder="Buscar por usuario, acción o valor…" aria-label="Buscar en el registro">
+          <div class="mut" id="cuenta-registro"></div>
+        </div>
+        <div class="card"><div id="registro" aria-live="polite"></div>
+          <button type="button" class="bo btn-chico" id="btn-registro-mas" hidden>Ver más</button></div>
       </section>
 
       <!-- Grupos -->
@@ -226,8 +256,8 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.50.0/dist/umd/supabase.js"></script>
-<script src="js/config.js?v=20"></script>
-<script src="js/comun.js?v=20"></script>
-<script src="js/admin.js?v=20"></script>
+<script src="js/config.js?v=21"></script>
+<script src="js/comun.js?v=21"></script>
+<script src="js/admin.js?v=21"></script>
 </body>
 </html>

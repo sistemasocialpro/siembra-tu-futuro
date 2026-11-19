@@ -59,24 +59,25 @@
   }
 
   // ---------- Pestañas ----------
-  const TABS = ['usuarios', 'grupos', 'espera', 'config'];
-  const CARGAR = { usuarios: cargarUsuarios, grupos: cargarGrupos, espera: cargarEspera, config: cargarConfig };
-  function mostrarTab(nombre) {
+  const TABS = ['usuarios', 'arbol', 'grupos', 'espera', 'config', 'registro'];
+  const CARGAR = { usuarios: cargarUsuarios, arbol: cargarArbol, grupos: cargarGrupos, espera: cargarEspera, config: cargarConfig, registro: () => cargarRegistro(false) };
+  // sinCargar: al abrir una ficha desde el árbol o el registro solo se cambia de pestaña
+  function mostrarTab(nombre, sinCargar) {
     TABS.forEach((k) => {
       $('tab-' + k).setAttribute('aria-selected', k === nombre ? 'true' : 'false');
       $('pan-' + k).hidden = k !== nombre;
     });
     ocultarAviso();
-    CARGAR[nombre]();
+    if (nombre === 'usuarios' && !sinCargar) cerrarFicha();
+    if (!sinCargar) CARGAR[nombre]();
   }
   TABS.forEach((k) => $('tab-' + k).addEventListener('click', () => mostrarTab(k)));
 
   // ---------- Datos comunes ----------
   async function cargarPerfiles() {
-    const { data, error } = await sb
-      .from('perfiles')
-      .select('id, nombre_usuario, nombre_completo, whatsapp, codigo_invitacion, invitado_por, es_fundador, creado_en')
-      .order('creado_en', { ascending: false });
+    const COLS = 'id, nombre_usuario, nombre_completo, whatsapp, codigo_invitacion, invitado_por, es_fundador, creado_en';
+    let { data, error } = await sb.from('perfiles').select(COLS + ', numero').order('creado_en', { ascending: false });
+    if (error) ({ data, error } = await sb.from('perfiles').select(COLS).order('creado_en', { ascending: false }));
     if (error) throw error;
     perfiles = data;
     perfilPorId = {};
@@ -127,24 +128,25 @@
     } catch (err) {
       const tb = $('tabla-usuarios');
       vaciar(tb);
-      tb.appendChild(el('tr', null, el('td', { colspan: '9', class: 'msg error', text: 'No se pudieron cargar los usuarios. ' + traducirErrorDatos(err) })));
+      tb.appendChild(el('tr', null, el('td', { colspan: '10', class: 'msg error', text: 'No se pudieron cargar los usuarios. ' + traducirErrorDatos(err) })));
     }
   }
 
   function pintarUsuarios() {
     const q = normalizar($('buscar-usuarios').value.trim());
     const visibles = perfiles.filter((p) => !q ||
-      [p.nombre_usuario, p.nombre_completo, correoPorId[p.id], p.whatsapp, p.codigo_invitacion, nombreDe(p.invitado_por)]
+      [numeroSocio(p.numero), String(p.numero || ''), p.nombre_usuario, p.nombre_completo, correoPorId[p.id], p.whatsapp, p.codigo_invitacion, nombreDe(p.invitado_por)]
         .some((v) => normalizar(v).includes(q))
     );
     const tb = $('tabla-usuarios');
     vaciar(tb);
     if (!visibles.length) {
-      tb.appendChild(el('tr', null, el('td', { colspan: '9', class: 'mut', text: perfiles.length ? 'Ningún usuario coincide con la búsqueda.' : 'Todavía no hay usuarios registrados.' })));
+      tb.appendChild(el('tr', null, el('td', { colspan: '10', class: 'mut', text: perfiles.length ? 'Ningún usuario coincide con la búsqueda.' : 'Todavía no hay usuarios registrados.' })));
     }
     visibles.forEach((p) => {
       tb.appendChild(el('tr', null,
-        el('td', null, el('b', { text: p.nombre_usuario })),
+        el('td', { class: 'mono', text: numeroSocio(p.numero) || '—' }),
+        el('td', null, el('button', { type: 'button', class: 'link-ficha', onclick: () => abrirFicha(p.id), title: 'Ver ficha', text: p.nombre_usuario })),
         el('td', { text: p.nombre_completo || '—' }),
         el('td', { text: correoPorId[p.id] || '—' }),
         el('td', null, p.whatsapp
@@ -235,7 +237,7 @@
       () => sb.rpc('admin_eliminar_cuenta', { p_user_id: p.id }),
       'La cuenta de ' + p.nombre_usuario + ' fue eliminada.'
     );
-    if (ok) { cargarUsuarios(); actualizarBadgeEspera(); }
+    if (ok) { cerrarFicha(); cargarUsuarios(); actualizarBadgeEspera(); }
   }
 
   // Fundador: en todos los niveles menos el primero crea su propio grupo como recibidor al tocar Participar
@@ -254,8 +256,371 @@
       () => sb.rpc('admin_marcar_fundador', { p_user_id: p.id, p_es_fundador: valor }),
       p.nombre_usuario + (valor ? ' ahora es fundador.' : ' ya no es fundador.')
     );
-    if (ok) cargarUsuarios();
+    if (ok) { cargarUsuarios(); if (fichaId === p.id) abrirFicha(p.id); }
   }
+
+  // =====================================================================
+  // (30) FICHA DEL USUARIO
+  // =====================================================================
+  const ESTADO_REFERIDO = { activo: 'Referido activo', reserva: 'En lista de espera', eliminado: 'Quitado por su patrocinador', derrame: 'Por derrame' };
+  const ESTADO_CASILLA = { reservada: 'Tarea pendiente', tarea_hecha: 'Tarea hecha · por aprobar', confirmada: 'Tarea aprobada', plazo_vencido: 'Plazo vencido' };
+  let fichaId = null;
+
+  function fechaHoraLarga(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return d.toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' }) + ' ' +
+      d.toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function cerrarFicha() {
+    fichaId = null;
+    $('ficha').hidden = true;
+    $('usuarios-lista').hidden = false;
+    if (!perfiles.length) cargarUsuarios();
+  }
+
+  async function abrirFicha(id) {
+    if ($('pan-usuarios').hidden) mostrarTab('usuarios', true);
+    fichaId = id;
+    $('usuarios-lista').hidden = true;
+    const caja = $('ficha');
+    caja.hidden = false;
+    vaciar(caja);
+    caja.appendChild(el('div', { class: 'card mut', text: 'Cargando ficha…' }));
+    window.scrollTo(0, 0);
+    const { data, error } = await sb.rpc('admin_ficha_usuario', { p_user_id: id });
+    if (fichaId !== id) return;
+    vaciar(caja);
+    caja.appendChild(el('button', { type: 'button', class: 'bo btn-chico ficha-volver', onclick: cerrarFicha, text: '← Volver a la lista' }));
+    if (error) {
+      caja.appendChild(el('div', { class: 'msg error', text: 'No se pudo cargar la ficha. ' + traducirErrorDatos(error) }));
+      return;
+    }
+    pintarFicha(data);
+  }
+
+  function dato(etiqueta, valor) {
+    return el('div', { class: 'ficha-dato' }, el('span', { class: 'mut', text: etiqueta }), el('b', { text: valor == null || valor === '' ? '—' : String(valor) }));
+  }
+
+  function pintarFicha(f) {
+    const d = f.datos;
+    const p = { id: d.id, nombre_usuario: d.nombre_usuario, es_fundador: d.es_fundador };
+    const caja = $('ficha');
+
+    // Cabecera
+    caja.appendChild(el('section', { class: 'ban ficha-ban' },
+      el('div', null,
+        el('div', { class: 'ficha-num', text: 'Socio N.º ' + (d.numero || '—') }),
+        el('h3', { text: d.nombre_usuario }),
+        el('div', { class: 'ban-sub', text: (d.nombre_completo || '') + ' · Registrado el ' + formatoFecha(d.creado_en) })),
+      el('div', { class: 'ficha-pills' },
+        d.es_fundador ? el('span', { class: 'pill pill-amarilla', text: 'Fundador' }) : null,
+        el('span', { class: 'pill pill-verde', text: ESTADO_REFERIDO[d.referido_estado] || d.referido_estado }))
+    ));
+
+    // Datos editables
+    const campos = {
+      nombre: el('input', { class: 'in', id: 'f-nombre', value: d.nombre_completo || '', maxlength: '80', autocomplete: 'off' }),
+      usuario: el('input', { class: 'in', id: 'f-usuario', value: d.nombre_usuario || '', maxlength: '20', autocomplete: 'off', autocapitalize: 'none' }),
+      correo: el('input', { class: 'in', id: 'f-correo', type: 'email', value: d.correo || '', maxlength: '120', autocomplete: 'off' }),
+      whatsapp: el('input', { class: 'in', id: 'f-whatsapp', type: 'tel', value: d.whatsapp || '', maxlength: '20', autocomplete: 'off' })
+    };
+    const errDatos = el('div', { class: 'msg error', hidden: true });
+    const formDatos = el('form', { class: 'ficha-form', novalidate: true },
+      el('label', { class: 'lb', for: 'f-nombre' }, 'Nombre completo', campos.nombre),
+      el('label', { class: 'lb', for: 'f-usuario' }, 'Usuario', campos.usuario),
+      el('label', { class: 'lb', for: 'f-correo' }, 'Correo', campos.correo),
+      el('label', { class: 'lb', for: 'f-whatsapp' }, 'WhatsApp', campos.whatsapp),
+      errDatos,
+      el('button', { type: 'submit', class: 'btn', text: 'Guardar cambios' })
+    );
+    formDatos.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errDatos.hidden = true;
+      const nuevo = { nombre: campos.nombre.value.trim(), usuario: campos.usuario.value.trim().toLowerCase(), correo: campos.correo.value.trim().toLowerCase(), whatsapp: campos.whatsapp.value.trim() };
+      const antes = { nombre: d.nombre_completo || '', usuario: d.nombre_usuario || '', correo: (d.correo || '').toLowerCase(), whatsapp: d.whatsapp || '' };
+      const etiquetas = { nombre: 'Nombre completo', usuario: 'Usuario', correo: 'Correo', whatsapp: 'WhatsApp' };
+      const cambios = Object.keys(nuevo).filter((k) => nuevo[k] !== antes[k]);
+      if (!cambios.length) { errDatos.textContent = 'No cambiaste ningún dato.'; errDatos.hidden = false; return; }
+      if (nuevo.whatsapp && typeof errorWhatsApp === 'function') {
+        const ew = errorWhatsApp(nuevo.whatsapp);
+        if (ew) { errDatos.textContent = ew; errDatos.hidden = false; return; }
+      }
+      const si = await confirmar({
+        titulo: 'Guardar cambios de ' + d.nombre_usuario,
+        texto: [el('ul', { class: 'equipo-lista' }, ...cambios.map((k) => el('li', null,
+          el('b', { text: etiquetas[k] + ': ' }), (antes[k] || '—') + ' → ' + (nuevo[k] || '—'))))].concat(
+          cambios.includes('correo') ? [el('div', { class: 'modal-nota', text: 'Con el correo nuevo entrará a la plataforma. Avísale.' })] : []),
+        boton: 'Guardar cambios'
+      });
+      if (!si) return;
+      const ok = await ejecutar(
+        () => sb.rpc('admin_editar_usuario', { p_user_id: d.id, p_nombre_completo: nuevo.nombre, p_nombre_usuario: nuevo.usuario, p_correo: nuevo.correo, p_whatsapp: nuevo.whatsapp }),
+        'Datos de ' + nuevo.usuario + ' guardados.'
+      );
+      if (ok) { abrirFicha(d.id); cargarUsuarios(); }
+    });
+
+    caja.appendChild(el('div', { class: 'ficha-grid' },
+      el('section', { class: 'card' }, el('h3', { text: 'Datos' }), formDatos),
+      el('section', { class: 'card' },
+        el('h3', { text: 'Cuenta y red' }),
+        el('div', { class: 'ficha-datos' },
+          dato('Código de invitación', d.codigo_invitacion),
+          dato('Último acceso', d.ultimo_acceso ? fechaHoraLarga(d.ultimo_acceso) : 'Nunca'),
+          dato('País', d.pais),
+          dato('WhatsApp visible para su grupo', d.acepta_whatsapp_visible ? 'Sí' : 'No'),
+          dato('Patrocinador', d.patrocinador ? (d.patrocinador_numero ? d.patrocinador_numero + ' · ' : '') + d.patrocinador : 'Sin patrocinador'),
+          dato('Referidos', f.referidos.activos + ' activos · ' + f.referidos.espera + ' en espera · ' + f.referidos.total + ' en total')),
+        el('div', { class: 'ficha-botones' },
+          el('button', { type: 'button', class: 'bo btn-chico', onclick: () => cambiarPatrocinador(d), text: 'Cambiar patrocinador' }),
+          el('button', { type: 'button', class: 'bo btn-chico', onclick: () => cambiarClave(p), text: 'Cambiar clave' }),
+          el('button', { type: 'button', class: 'bo btn-chico', onclick: () => cambiarFundador(p, !d.es_fundador), text: d.es_fundador ? 'Quitar fundador' : 'Marcar como fundador' }),
+          el('button', { type: 'button', class: 'bt-salir btn-chico', onclick: () => eliminarCuenta(p), text: 'Eliminar cuenta' })))
+    ));
+
+    // Posiciones
+    const pos = el('section', { class: 'card' }, el('h3', { text: 'Posiciones' }));
+    if (!f.posiciones.length) pos.appendChild(el('p', { class: 'mut', text: 'No tiene posiciones.' + (f.espera.length ? ' En lista de espera de: ' + f.espera.join(', ') + '.' : '') }));
+    f.posiciones.forEach((x) => {
+      pos.appendChild(el('div', { class: 'ficha-pos' },
+        el('div', null,
+          el('b', { text: 'Nivel ' + x.nivel_orden + ' (' + x.nivel + ') · ' + NOMBRE_POSICION[x.posicion] }),
+          el('span', { class: 'mut', text: (x.tipo_grupo === 'repetido' ? 'Grupo repetido' : 'Grupo') + ' de ' + (x.recibidor || 'recibidor libre') +
+            (ESTADO_CASILLA[x.estado] ? ' · ' + ESTADO_CASILLA[x.estado] : '') + (x.origen === 'admin' ? ' · puesto por el admin' : '') })),
+        el('button', { type: 'button', class: 'bo btn-chico', onclick: () => moverPosicion(d, x), text: 'Mover' })));
+    });
+    if (f.posiciones.length && f.espera.length) pos.appendChild(el('p', { class: 'mut', text: 'También en lista de espera de: ' + f.espera.join(', ') + '.' }));
+    caja.appendChild(pos);
+
+    // Tareas por nivel
+    const filas = f.tareas.filter((t) => t.recibidas_normal + t.recibidas_repeticion + t.hechas_normal + t.hechas_repeticion > 0);
+    const sum = (k) => f.tareas.reduce((a, t) => a + t[k], 0);
+    const tot = { rn: sum('recibidas_normal'), rr: sum('recibidas_repeticion'), hn: sum('hechas_normal'), hr: sum('hechas_repeticion') };
+    const tareas = el('section', { class: 'card' }, el('h3', { text: 'Tareas por nivel' }),
+      el('p', { class: 'mut', text: 'Recibidas = aprobadas como Recibidor. Hechas = como Regalador (aprobadas). Repetición = ya había completado ese nivel antes.' }));
+    if (!filas.length) {
+      tareas.appendChild(el('p', { class: 'mut', text: 'Todavía no tiene tareas recibidas ni hechas.' }));
+    } else {
+      const tb = el('tbody');
+      filas.forEach((t) => tb.appendChild(el('tr', null,
+        el('td', null, el('b', { text: t.nivel_orden + '. ' + t.nivel })),
+        el('td', { text: String(t.recibidas_normal) }), el('td', { text: String(t.recibidas_repeticion) }),
+        el('td', { text: String(t.hechas_normal) }), el('td', { text: String(t.hechas_repeticion) }),
+        el('td', null, el('b', { text: String(t.recibidas_normal + t.recibidas_repeticion + t.hechas_normal + t.hechas_repeticion) })))));
+      tb.appendChild(el('tr', { class: 'fila-total' },
+        el('td', null, el('b', { text: 'Total' })),
+        el('td', { text: String(tot.rn) }), el('td', { text: String(tot.rr) }), el('td', { text: String(tot.hn) }), el('td', { text: String(tot.hr) }),
+        el('td', null, el('b', { text: String(tot.rn + tot.rr + tot.hn + tot.hr) }))));
+      tareas.appendChild(el('div', { class: 'tabla-wrap' }, el('table', { class: 'tabla tabla-tareas' },
+        el('thead', null,
+          el('tr', null, el('th', { scope: 'col', rowspan: '2', text: 'Nivel' }), el('th', { scope: 'colgroup', colspan: '2', text: 'Recibidas' }),
+            el('th', { scope: 'colgroup', colspan: '2', text: 'Hechas' }), el('th', { scope: 'col', rowspan: '2', text: 'Total' })),
+          el('tr', null, el('th', { scope: 'col', text: 'Normal' }), el('th', { scope: 'col', text: 'Repetición' }),
+            el('th', { scope: 'col', text: 'Normal' }), el('th', { scope: 'col', text: 'Repetición' }))),
+        tb)));
+      tareas.appendChild(el('div', { class: 'ficha-totales' },
+        el('span', null, 'Recibidas: ', el('b', { text: String(tot.rn + tot.rr) })),
+        el('span', null, 'Hechas: ', el('b', { text: String(tot.hn + tot.hr) })),
+        el('span', null, 'Total general: ', el('b', { text: String(tot.rn + tot.rr + tot.hn + tot.hr) }))));
+    }
+    caja.appendChild(tareas);
+
+    // Últimos cambios del admin sobre esta persona
+    const reg = el('section', { class: 'card' }, el('h3', { text: 'Últimos cambios del administrador' }));
+    if (!f.ultimos_cambios.length) reg.appendChild(el('p', { class: 'mut', text: 'Sin cambios registrados.' }));
+    else reg.appendChild(listaRegistro(f.ultimos_cambios, false));
+    caja.appendChild(reg);
+  }
+
+  async function cambiarPatrocinador(d) {
+    if (!perfiles.length) await cargarPerfiles();
+    const elegido = await elegirDeLista({
+      titulo: 'Nuevo patrocinador de ' + d.nombre_usuario,
+      sub: 'Su patrocinador actual es ' + (d.patrocinador || 'nadie') + '. Si el nuevo ya tiene 2 referidos activos, quedará en su lista de espera.',
+      items: perfiles.filter((x) => x.id !== d.id && x.id !== d.patrocinador_id).map((x) => ({
+        titulo: (x.numero ? numeroSocio(x.numero) + ' · ' : '') + x.nombre_usuario, sub: x.nombre_completo || '', valor: x })),
+      vacio: 'No hay otros socios.'
+    });
+    if (!elegido) return;
+    const si = await confirmar({
+      titulo: 'Cambiar patrocinador',
+      texto: ['¿Poner a ', el('b', { text: d.nombre_usuario }), ' debajo de ', el('b', { text: elegido.nombre_usuario }),
+        ' (antes: ' + (d.patrocinador || 'sin patrocinador') + ')? Sus posiciones no cambian. Si era referido activo de su patrocinador anterior, a ese patrocinador se le libera un lugar.'],
+      boton: 'Cambiar patrocinador'
+    });
+    if (!si) return;
+    const ok = await ejecutar(() => sb.rpc('admin_cambiar_patrocinador', { p_user_id: d.id, p_nuevo: elegido.id }),
+      'Ahora ' + d.nombre_usuario + ' es referido de ' + elegido.nombre_usuario + '.');
+    if (ok) { abrirFicha(d.id); cargarPerfiles().catch(() => {}); }
+  }
+
+  async function moverPosicion(d, x) {
+    await cargarNiveles();
+    const nivel = await elegirDeLista({
+      titulo: 'Mover a ' + d.nombre_usuario,
+      sub: 'Ahora está en ' + NOMBRE_POSICION[x.posicion] + ' del nivel ' + x.nivel + '. Elige el nivel de destino.',
+      items: niveles.map((n) => ({ titulo: n.orden + '. ' + n.nombre + (n.id === x.nivel_id ? ' (el mismo nivel)' : ''), valor: n })),
+      vacio: 'No hay niveles.'
+    });
+    if (!nivel) return;
+    const { data, error } = await sb.rpc('admin_casillas_libres', { p_nivel_id: nivel.id });
+    if (error) return aviso(traducirErrorDatos(error));
+    const casilla = await elegirDeLista({
+      titulo: 'Casilla libre en ' + nivel.nombre,
+      sub: 'Solo se muestran casillas libres de grupos activos con alguien arriba.',
+      items: (data || []).filter((c) => c.posicion_id !== x.posicion_id).map((c) => ({
+        titulo: NOMBRE_POSICION[c.posicion] + ' · grupo de ' + (c.recibidor || 'recibidor libre'),
+        sub: c.debajo_de ? 'Debajo de ' + c.debajo_de : '', valor: c })),
+      vacio: 'No hay casillas libres en este nivel. Crea un grupo en la pestaña Grupos.'
+    });
+    if (!casilla) return;
+    const si = await confirmar({
+      titulo: 'Mover posición',
+      texto: ['¿Mover a ', el('b', { text: d.nombre_usuario }), ' de ' + NOMBRE_POSICION[x.posicion] + ' (nivel ' + x.nivel + ') a ' +
+        NOMBRE_POSICION[casilla.posicion] + ' del grupo de ' + (casilla.recibidor || 'recibidor libre') + ' (nivel ' + nivel.nombre + ')? Recibirá una notificación.'],
+      boton: 'Mover'
+    });
+    if (!si) return;
+    const ok = await ejecutar(() => sb.rpc('admin_mover_posicion', { p_desde: x.posicion_id, p_hacia: casilla.posicion_id }),
+      d.nombre_usuario + ' fue movido a ' + NOMBRE_POSICION[casilla.posicion] + '.');
+    if (ok) abrirFicha(d.id);
+  }
+
+  // =====================================================================
+  // (30) ÁRBOL
+  // =====================================================================
+  let arbolDatos = [];
+  let hijosDe = {};
+  function numeroSocio(n) { return n == null ? '' : String(n).padStart(3, '0'); }
+
+  function etiquetaNodo(u) {
+    const hijos = (hijosDe[u.id] || []).length;
+    return el('span', { class: 'arbol-et' },
+      el('span', { class: 'arbol-num', text: u.numero || '—' }),
+      el('button', { type: 'button', class: 'arbol-nombre', onclick: (e) => { e.preventDefault(); abrirFicha(u.id); }, text: u.nombre_usuario }),
+      u.nombre_completo ? el('span', { class: 'mut arbol-completo', text: u.nombre_completo }) : null,
+      u.es_fundador ? el('span', { class: 'pill pill-amarilla', text: 'Fundador' }) : null,
+      u.referido_estado && u.referido_estado !== 'activo' ? el('span', { class: 'pill pill-gris', text: ESTADO_REFERIDO[u.referido_estado] || u.referido_estado }) : null,
+      u.nivel ? el('span', { class: 'pill pill-verde', text: u.nivel }) : null,
+      hijos ? el('span', { class: 'mut arbol-hijos', text: hijos + (hijos === 1 ? ' referido' : ' referidos') }) : null);
+  }
+
+  // Cada rama se arma recién cuando se abre (el árbol puede tener miles de personas)
+  function nodoArbol(u, visibles, abierto) {
+    const hijos = (hijosDe[u.id] || []).filter((h) => !visibles || visibles.has(h.id));
+    if (!hijos.length) return el('div', { class: 'arbol-hoja' }, etiquetaNodo(u));
+    const det = el('details', { class: 'arbol-rama' }, el('summary', null, etiquetaNodo(u)));
+    const cont = el('div', { class: 'arbol-hijos-caja' });
+    det.appendChild(cont);
+    let armado = false;
+    const armar = () => {
+      if (armado) return;
+      armado = true;
+      hijos.forEach((h) => cont.appendChild(nodoArbol(h, visibles, abierto)));
+    };
+    det.addEventListener('toggle', () => { if (det.open) armar(); });
+    if (abierto) { det.open = true; armar(); }
+    return det;
+  }
+
+  function pintarArbol() {
+    const caja = $('arbol');
+    vaciar(caja);
+    const q = normalizar($('buscar-arbol').value.trim());
+    const porId = {};
+    arbolDatos.forEach((u) => { porId[u.id] = u; });
+    const raices = arbolDatos.filter((u) => !u.patrocinador_id || !porId[u.patrocinador_id]);
+    let visibles = null;
+    if (q) {
+      visibles = new Set();
+      arbolDatos.forEach((u) => {
+        if ([u.numero, u.nombre_usuario, u.nombre_completo].some((v) => normalizar(v).includes(q))) {
+          for (let x = u; x && !visibles.has(x.id); x = porId[x.patrocinador_id]) visibles.add(x.id);
+        }
+      });
+    }
+    const mostrar = raices.filter((r) => !visibles || visibles.has(r.id));
+    $('cuenta-arbol').textContent = q
+      ? (visibles.size ? 'Se muestran las ramas con coincidencias.' : 'Nadie coincide con la búsqueda.')
+      : arbolDatos.length + ' socios · ' + raices.length + (raices.length === 1 ? ' raíz' : ' raíces');
+    mostrar.forEach((r) => caja.appendChild(nodoArbol(r, visibles, !!q)));
+  }
+
+  async function cargarArbol() {
+    const caja = $('arbol');
+    vaciar(caja);
+    caja.appendChild(el('p', { class: 'mut', text: 'Cargando árbol…' }));
+    const { data, error } = await sb.rpc('admin_arbol');
+    if (error) {
+      vaciar(caja);
+      caja.appendChild(el('div', { class: 'msg error', text: 'No se pudo cargar el árbol. ' + traducirErrorDatos(error) }));
+      return;
+    }
+    arbolDatos = data || [];
+    hijosDe = {};
+    arbolDatos.forEach((u) => { if (u.patrocinador_id) (hijosDe[u.patrocinador_id] = hijosDe[u.patrocinador_id] || []).push(u); });
+    pintarArbol();
+  }
+  let tArbol;
+  $('buscar-arbol').addEventListener('input', () => { clearTimeout(tArbol); tArbol = setTimeout(pintarArbol, 200); });
+  $('btn-arbol-abrir').addEventListener('click', () => {
+    // Abre las ramas ya armadas y la primera capa de las demás
+    $('arbol').querySelectorAll('details').forEach((d) => { d.open = true; });
+  });
+  $('btn-arbol-cerrar').addEventListener('click', () => { $('arbol').querySelectorAll('details').forEach((d) => { d.open = false; }); });
+
+  // =====================================================================
+  // (30) REGISTRO DE CAMBIOS
+  // =====================================================================
+  function listaRegistro(filas, conUsuario) {
+    const ul = el('ul', { class: 'registro-lista' });
+    filas.forEach((r) => {
+      ul.appendChild(el('li', { class: 'registro-item' },
+        el('div', { class: 'registro-cab' },
+          el('span', { class: 'pill pill-verde', text: r.accion }),
+          conUsuario && r.usuario_nombre
+            ? (r.usuario_id && r.accion !== 'Cuenta eliminada' ? el('button', { type: 'button', class: 'link registro-usuario', onclick: () => abrirFicha(r.usuario_id), text: r.usuario_nombre })
+                            : el('b', { text: r.usuario_nombre }))
+            : null,
+          el('span', { class: 'mut registro-fecha', text: fechaHoraLarga(r.creado_en) + ' · por ' + (r.admin_nombre || 'administrador') })),
+        r.detalle ? el('div', { class: 'registro-detalle', text: r.detalle }) : null,
+        (r.valor_anterior != null || r.valor_nuevo != null)
+          ? el('div', { class: 'registro-valores' },
+              el('span', { class: 'registro-antes', text: 'Antes: ' + (r.valor_anterior == null ? '—' : r.valor_anterior) }),
+              el('span', { class: 'registro-flecha', 'aria-hidden': 'true', text: '→' }),
+              el('span', { class: 'registro-ahora', text: 'Ahora: ' + (r.valor_nuevo == null ? '—' : r.valor_nuevo) }))
+          : null));
+    });
+    return ul;
+  }
+
+  let regDesde = 0;
+  let regTurno = 0;
+  async function cargarRegistro(mas) {
+    const turno = ++regTurno;
+    if (!mas) regDesde = 0;
+    const q = $('buscar-registro').value.trim();
+    const { data, error } = await sb.rpc('admin_ver_registro', { p_buscar: q || null, p_cuantos: 50, p_desde: regDesde });
+    if (turno !== regTurno) return;
+    const caja = $('registro');
+    if (!mas) vaciar(caja);
+    if (error) {
+      caja.appendChild(el('div', { class: 'msg error', text: 'No se pudo cargar el registro. ' + traducirErrorDatos(error) }));
+      $('btn-registro-mas').hidden = true;
+      return;
+    }
+    if (!data.filas.length && !mas) caja.appendChild(el('p', { class: 'mut', text: q ? 'Nada coincide con la búsqueda.' : 'Todavía no hay cambios registrados.' }));
+    else caja.appendChild(listaRegistro(data.filas, true));
+    regDesde += data.filas.length;
+    $('cuenta-registro').textContent = data.total + (data.total === 1 ? ' cambio' : ' cambios');
+    $('btn-registro-mas').hidden = regDesde >= data.total;
+  }
+  let tReg;
+  $('buscar-registro').addEventListener('input', () => { clearTimeout(tReg); tReg = setTimeout(() => cargarRegistro(false), 250); });
+  $('btn-registro-mas').addEventListener('click', () => cargarRegistro(true));
 
   // =====================================================================
   // GRUPOS
